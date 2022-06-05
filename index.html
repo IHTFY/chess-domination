@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Domination</title>
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" media="screen" href="styles.css" />
+    <script
+      type="module"
+      src="https://unpkg.com/chessboard-element?module"
+    ></script>
+
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://cdn.jsdelivr.net/npm/@materializecss/materialize@1.1.0/dist/css/materialize.min.css"
+    />
+
+    <script src="https://cdn.jsdelivr.net/npm/@materializecss/materialize@1.1.0/dist/js/materialize.min.js"></script>
+
+    <script defer src="main.js"></script>
+  </head>
+  <body>
+    <div class="row">
+      <div class="col m12 l6">
+        <div class="boardContainer">
+          <chess-board id="board"> </chess-board>
+        </div>
+        <button id="kingBtn" class="waves-effect btn indigo">King</button>
+        <button id="queenBtn" class="waves-effect btn indigo">Queen</button>
+        <button id="rookBtn" class="waves-effect btn indigo">Rook</button>
+        <button id="bishopBtn" class="waves-effect btn indigo">Bishop</button>
+        <button id="knightBtn" class="waves-effect btn indigo">Knight</button>
+        <button id="clearBtn" class="waves-effect btn red right">Clear</button>
+      </div>
+      <div class="col m12 l6">
+        <div>
+          <pre id="stats"></span>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

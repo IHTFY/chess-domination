@@ -1,0 +1,18 @@
+html,
+body {
+  background-color: #00181f;
+  color: white;
+}
+
+.boardContainer {
+  background-color: #404040;
+  border-radius: 1rem;
+  padding: 1rem;
+  margin-bottom: -4rem;
+}
+
+#board {
+  --light-color: #e6f2ff;
+  --dark-color: #002b40;
+  --highlight-color: #ffff00;
+}
