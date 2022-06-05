@@ -193,11 +193,28 @@ const solveKnights = () => pickRandom([
   '1N1N1N1N/N1N1N1N1/1N1N1N1N/N1N1N1N1/1N1N1N1N/N1N1N1N1/1N1N1N1N/N1N1N1N1',
 ]);
 
+// Solve For Pawns
+const solvePawns = () => {
+  return pickRandom([
+    'PPPPPPPP/8/PPPPPPPP/8/PPPPPPPP/8/PPPPPPPP/8',
+    'PPPPPPPP/8/PPPPPPPP/8/PPPPPPPP/8/8/PPPPPPPP',
+    'PPPPPPPP/8/PPPPPPPP/8/8/PPPPPPPP/8/PPPPPPPP',
+    'PPPPPPPP/8/8/PPPPPPPP/8/PPPPPPPP/8/PPPPPPPP',
+    '8/PPPPPPPP/8/PPPPPPPP/8/PPPPPPPP/8/PPPPPPPP',
+    'P1P1P1P1/'.repeat(8).slice(0, -1),
+    'P1P1P2P/'.repeat(8).slice(0, -1),
+    'P1P2P1P/'.repeat(8).slice(0, -1),
+    'P2P1P1P/'.repeat(8).slice(0, -1),
+    '1P1P1P1P/'.repeat(8).slice(0, -1),
+  ]);
+};
+
 
 document.querySelector('#kingBtn').addEventListener('click', () => board.setPosition(solveKings()));
 document.querySelector('#queenBtn').addEventListener('click', () => board.setPosition(solveQueens()));
 document.querySelector('#rookBtn').addEventListener('click', () => board.setPosition(solveRooks()));
 document.querySelector('#bishopBtn').addEventListener('click', () => board.setPosition(solveBishops()));
 document.querySelector('#knightBtn').addEventListener('click', () => board.setPosition(solveKnights()));
+document.querySelector('#pawnBtn').addEventListener('click', () => board.setPosition(solvePawns()));
 
 clearBtn.addEventListener('click', () => board.clear());
