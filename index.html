@@ -23,26 +23,48 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@materializecss/materialize@1.1.0/dist/js/materialize.min.js"></script>
 
-    <script defer src="main.js"></script>
+    <script defer type="module" src="main.js"></script>
   </head>
   <body>
-    <div class="row">
+    <div class="row buttons">
       <div class="col m12 l6 center-align" >
-        <div class="boardContainer">
+        <div class="boardContainer s12">
           <chess-board id="board"> </chess-board>
         </div>
-        <div class="col s12">
-          <button id="kingBtn" class="waves-effect btn indigo">King</button>
-          <button id="queenBtn" class="waves-effect btn indigo">Queen</button>
-          <button id="rookBtn" class="waves-effect btn indigo">Rook</button>
-          <button id="bishopBtn" class="waves-effect btn indigo">Bishop</button>
-          <button id="knightBtn" class="waves-effect btn indigo">Knight</button>
-          <button id="pawnBtn" class="waves-effect btn indigo">Pawn</button>
+
+        <form action="#">
+          <div class="row">
+            <div class="col s12">
+              <p>
+                <label>
+                  Solve
+                  <button id="kingBtn" class="waves-effect btn indigo">King</button>
+                  <button id="queenBtn" class="waves-effect btn indigo">Queen</button>
+                  <button id="rookBtn" class="waves-effect btn indigo">Rook</button>
+                  <button id="bishopBtn" class="waves-effect btn indigo">Bishop</button>
+                  <button id="knightBtn" class="waves-effect btn indigo">Knight</button>
+                  <button id="pawnBtn" class="waves-effect btn indigo">Pawn</button>
+                </label>
+              </p>
+            </div>
+            <div class="col s6">
+              <div class="switch">
+                <label>
+                  Non-Attacking
+                  <input id="modeSwitch" type="checkbox">
+                  <span class="lever"></span>
+                  Domination
+                </label>
+              </div>
+            </div>
+            <div class="col s6">
+              <button id="clearBtn" class="waves-effect btn red">Clear</button>
+            </div>
+          </div>  
         </div>
-        <div class="col s12">
-          <button id="clearBtn" class="waves-effect btn red">Clear</button>
-        </div>
-      </div>
+      </form>
+
+
       <div class="col m12 l6">
         <div>
           <pre id="stats"></span>
