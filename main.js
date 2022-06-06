@@ -47,10 +47,20 @@ board.draggablePieces = true;
 board.dropOffBoard = 'trash';
 board.pieceTheme = piece => `https://lichess1.org/assets/_a8WL5z/piece/alpha/${piece}.svg`;
 
-const updateStats = (pos, oldPos) => stats.textContent = JSON.stringify(Object.values(pos).reduce((a, c) => {
-  a[c[1]]++;
-  return a;
-}, { 'K': 0, 'Q': 0, 'R': 0, 'B': 0, 'N': 0, 'P': 0 }));
+const updateStats = (pos, oldPos) => {
+  const pieceCount = Object.values(pos).reduce((a, c) => {
+    a[c[1]]++;
+    return a;
+  }, { 'K': 0, 'Q': 0, 'R': 0, 'B': 0, 'N': 0, 'P': 0 });
+  stats.innerHTML = Object.entries(pieceCount).map(([k, v]) => `${{
+    'K': '♔',
+    'Q': '♕',
+    'R': '♖',
+    'B': '♗',
+    'N': '♘',
+    'P': '♙',
+  }[k]}: ${v}`).join('<br>');
+};
 
 board.addEventListener('change', e => {
   const { value, oldValue } = e.detail;
