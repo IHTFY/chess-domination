@@ -32,28 +32,31 @@
           <chess-board id="board"> </chess-board>
         </div>
 
-        <form action="#">
-          <div class="row">
-            <div class="col s12">
-              <p>
-                <label>
-                  Solve
-                  <button id="kingBtn" class="waves-effect btn indigo">♔</button>
-                  <button id="queenBtn" class="waves-effect btn indigo">♕</button>
-                  <button id="rookBtn" class="waves-effect btn indigo">♖</button>
-                  <button id="bishopBtn" class="waves-effect btn indigo">♗</button>
-                  <button id="knightBtn" class="waves-effect btn indigo">♘</button>
-                  <button id="pawnBtn" class="waves-effect btn indigo">♙</button>
-                </label>
-              </p>
-            </div>
+        <div class="row">
+          <div class="col s12">
+            <p>
+              <label>
+                Solve
+                <button id="kingBtn" class="waves-effect btn indigo">♔</button>
+                <button id="queenBtn" class="waves-effect btn indigo">♕</button>
+                <button id="rookBtn" class="waves-effect btn indigo">♖</button>
+                <button id="bishopBtn" class="waves-effect btn indigo">
+                  ♗
+                </button>
+                <button id="knightBtn" class="waves-effect btn indigo">
+                  ♘
+                </button>
+                <button id="pawnBtn" class="waves-effect btn indigo">♙</button>
+              </label>
+            </p>
+          </div>
 
-            <div class="container">
-              <div class="col s8">
-                <div class="switch">
+          <div class="container">
+            <div class="col s8">
+              <div class="switch">
                 <label>
                   Non-Attacking
-                  <input id="modeSwitch" type="checkbox">
+                  <input id="modeSwitch" type="checkbox" />
                   <span class="lever"></span>
                   Domination
                 </label>
@@ -63,15 +66,14 @@
               <button id="clearBtn" class="waves-effect btn red">Clear</button>
             </div>
           </div>
-            
-          </div>  
         </div>
-      </form>
-
+      </div>
 
       <div class="col m12 l6">
         <h1>Stats</h1>
-        <div id="stats">♔: 0<br>♕: 0<br>♖: 0<br>♗: 0<br>♘: 0<br>♙: 0</div>
+        <div id="stats">
+          ♔: 0<br />♕: 0<br />♖: 0<br />♗: 0<br />♘: 0<br />♙: 0
+        </div>
       </div>
     </div>
   </body>
