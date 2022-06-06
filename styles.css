@@ -16,3 +16,7 @@ body {
   --dark-color: #002b40;
   --highlight-color: #ffff00;
 }
+
+#stats {
+  font-size: 2rem;
+}
