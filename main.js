@@ -286,15 +286,13 @@ const updateStats = pos => {
     scores[gameMode][pieceType]['pb'] = Math[gameMode.toLowerCase()](scores[gameMode][pieceType]['pb'], pieceCount[pieceType]);
   }
 
+  // Update table
   document.querySelector('#kingBest').textContent = scores[gameMode]['K']['pb'];
   document.querySelector('#queenBest').textContent = scores[gameMode]['Q']['pb'];
   document.querySelector('#rookBest').textContent = scores[gameMode]['R']['pb'];
   document.querySelector('#bishopBest').textContent = scores[gameMode]['B']['pb'];
   document.querySelector('#knightBest').textContent = scores[gameMode]['N']['pb'];
   document.querySelector('#pawnBest').textContent = scores[gameMode]['P']['pb'];
-
-  // Update table
-
 };
 
 board.addEventListener('change', e => {
@@ -603,6 +601,8 @@ document.querySelector('#modeSwitch').addEventListener('change', () => {
   document.querySelector('#bishopPossible').textContent = possible['B']['wr'];
   document.querySelector('#knightPossible').textContent = possible['N']['wr'];
   document.querySelector('#pawnPossible').textContent = possible['P']['wr'];
+
+  updateStats(board.position);
 });
 
 for (let piece of ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn']) {
