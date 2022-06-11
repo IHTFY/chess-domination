@@ -30,16 +30,19 @@ const transpose = fen => {
 };
 
 // get all 8 symmetries of a fen
-const getSymmetries = fen => [
-  fen,
-  flipVertical(fen),
-  flipHorizontal(fen),
-  rotate180(fen),
-  transpose(fen),
-  flipVertical(flipHorizontal(fen)),
-  flipVertical(rotate180(fen)),
-  flipHorizontal(rotate180(fen)),
-];
+const getSymmetries = fen => {
+  let t = transpose(fen);
+  return [
+    fen,
+    flipVertical(fen),
+    flipHorizontal(fen),
+    rotate180(fen),
+    t,
+    flipVertical(t),
+    flipHorizontal(t),
+    rotate180(t),
+  ]
+};
 
 const board = document.querySelector('#board');
 board.sparePieces = true;
@@ -344,6 +347,7 @@ const solve = piece => {
     case 'pawn':
       return solvePawn();
     default:
+      return {};
   };
 };
 

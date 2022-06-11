@@ -7,8 +7,9 @@ body {
 .boardContainer {
   background-color: #404040;
   border-radius: 1rem;
-  padding: 1rem 1rem 5rem 1rem;
+  min-height: 480px;
   margin-bottom: -9rem;
+  padding: 1rem 1rem 5rem 1rem;
 }
 
 #board {
