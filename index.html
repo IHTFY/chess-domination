@@ -70,10 +70,54 @@
       </div>
 
       <div class="col m12 l6">
-        <h1>Stats</h1>
-        <div id="stats">
-          ♔: 0<br />♕: 0<br />♖: 0<br />♗: 0<br />♘: 0<br />♙: 0
-        </div>
+        <table id="stats">
+          <thead>
+            <tr>
+              <th>Piece</th>
+              <th>Count</th>
+              <th>Best</th>
+              <th>Possible</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>♔</td>
+              <td id="kingCount">0</td>
+              <td id="kingBest">0</td>
+              <td id="kingPossible">16</td>
+            </tr>
+            <tr>
+              <td>♕</td>
+              <td id="queenCount">0</td>
+              <td id="queenBest">0</td>
+              <td id="queenPossible">8</td>
+            </tr>
+            <tr>
+              <td>♖</td>
+              <td id="rookCount">0</td>
+              <td id="rookBest">0</td>
+              <td id="rookPossible">8</td>
+            </tr>
+            <tr>
+              <td>♗</td>
+              <td id="bishopCount">0</td>
+              <td id="bishopBest">0</td>
+              <td id="bishopPossible">14</td>
+            </tr>
+            <tr>
+              <td>♘</td>
+              <td id="knightCount">0</td>
+              <td id="knightBest">0</td>
+              <td id="knightPossible">32</td>
+            </tr>
+            <tr>
+              <td>♙</td>
+              <td id="pawnCount">0</td>
+              <td id="pawnBest">0</td>
+              <td id="pawnPossible">32</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </body>
