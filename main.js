@@ -494,7 +494,14 @@ const solveQueen = () => {
       '4Q3/6Q1/1Q6/5Q2/2Q5/Q7/3Q4/7Q',
     ])
   } else {
-    return pickRandom(getSymmetries('6Q1/2Q5/8/8/7Q/3Q4/8/Q7'));
+    // TODO get all unique
+    // 65 unique https://www.pleacher.com/mp/puzzles/miscpuz3/queens5.html
+    return pickRandom([
+      '6Q1/2Q5/8/8/7Q/3Q4/8/Q7',
+      '6Q1/8/1Q6/8/4Q3/7Q/8/3Q4',
+      '8/8/3Q4/6Q1/4Q3/2Q5/5Q2/8',
+      '6Q1/8/4Q3/3Q4/2Q5/8/Q7/8'
+    ].flatMap(i => getSymmetries(i)));
   }
 };
 
@@ -535,6 +542,17 @@ const solveBishop = () => {
       '4B3/4B3/4B3/4B3/4B3/4B3/4B3/4B3',
       '8/8/8/BBBBBBBB/8/8/8/8',
       '8/8/8/8/BBBBBBBB/8/8/8'
+      // TODO add perturbations, e.g.
+      // swapping corners of a tilted rectangle
+      // using d/e or 4/5 a reflection axis
+      // '8/3BB3/8/3BB3/8/3BB3/8/3BB3'
+      // '8/8/2BBBB2/8/8/2BBBB2/8/8'
+      // '8/8/2BB1B2/5B2/2B5/2B1BB2/8/8'
+      // '8/8/2BB1B2/5B2/2B5/4B3/8/3BB3'
+      // '3B4/8/8/2BB1B2/B4B2/2B5/4B3/8'
+      // '8/3BB3/1B4B1/8/2B2B2/2B2B2/8/8'
+      // '8/3B4/8/3B4/1B1B1B1B/3B4/8/3B4'
+      // '3B4/8/2B1B3/4B2B/1B6/3BB3/8/8'
     ]);
   }
 };
