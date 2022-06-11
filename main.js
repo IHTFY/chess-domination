@@ -24,6 +24,7 @@ let scores = {
   },
 };
 
+// array utility functions
 const pickRandom = arr => arr[Math.floor(Math.random() * arr.length)];
 const shuffle = arr => {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -126,7 +127,7 @@ const isValid = (pos, mode) => {
             !pos[left + below] && !pos[f + below] && !pos[right + below];
         });
       } else {
-        let covered = new Set(occupied);
+        let covered = new Set();
 
         // add a border of out of bounds squares (36 squares)
         for (let i = 0; i <= 9; i++) {
@@ -149,6 +150,7 @@ const isValid = (pos, mode) => {
           covered.add(f + above);
           covered.add(right + above);
           covered.add(left + r);
+          covered.add(f + r)
           covered.add(right + r);
           covered.add(left + below);
           covered.add(f + below);
