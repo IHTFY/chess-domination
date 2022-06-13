@@ -302,20 +302,20 @@ const solvePawn = mode => {
   }
 };
 
-const solve = piece => {
+const solve = (piece, mode) => {
   switch (piece) {
     case 'king':
-      return solveKing();
+      return solveKing(mode);
     case 'queen':
-      return solveQueen();
+      return solveQueen(mode);
     case 'rook':
-      return solveRook();
+      return solveRook(mode);
     case 'bishop':
-      return solveBishop();
+      return solveBishop(mode);
     case 'knight':
-      return solveKnight();
+      return solveKnight(mode);
     case 'pawn':
-      return solvePawn();
+      return solvePawn(mode);
     default:
       return {};
   };

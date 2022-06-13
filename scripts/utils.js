@@ -41,14 +41,14 @@ const transpose = fen => {
 const getSymmetries = fen => {
   let t = transpose(fen);
   return [
-    fen,
-    flipVertical(fen),
-    flipHorizontal(fen),
-    rotate180(fen),
-    t,
-    flipVertical(t),
-    flipHorizontal(t),
-    rotate180(t),
+    fen,                  // ᑭ
+    flipVertical(fen),    // Ь
+    flipHorizontal(fen),  // ᑫ
+    rotate180(fen),       // ᑯ
+    t,                    // ᓄ
+    flipVertical(t),      // ᓀ
+    flipHorizontal(t),    // ᓇ
+    rotate180(t),         // ᓂ
   ]
 };
 
