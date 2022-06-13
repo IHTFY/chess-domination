@@ -25,6 +25,8 @@ let scores = {
   },
 };
 
+const pieces = Object.keys(scores[gameMode]);
+
 const board = document.querySelector('#board');
 board.sparePieces = true;
 board.draggablePieces = true;
@@ -208,14 +210,6 @@ const isValid = (pos, mode) => {
 const updateStats = pos => {
   const pieceCount = countPieces(pos);
 
-  document.querySelector('#kingCount').textContent = pieceCount['K'];
-  document.querySelector('#queenCount').textContent = pieceCount['Q'];
-  document.querySelector('#rookCount').textContent = pieceCount['R'];
-  document.querySelector('#bishopCount').textContent = pieceCount['B'];
-  document.querySelector('#knightCount').textContent = pieceCount['N'];
-  document.querySelector('#pawnCount').textContent = pieceCount['P'];
-
-
   const pieceType = Object.values(pos)[0]?.[1];
   const pass = isValid(pos, gameMode);
 
@@ -232,12 +226,10 @@ const updateStats = pos => {
   }
 
   // Update table
-  document.querySelector('#kingBest').textContent = scores[gameMode]['K']['pb'];
-  document.querySelector('#queenBest').textContent = scores[gameMode]['Q']['pb'];
-  document.querySelector('#rookBest').textContent = scores[gameMode]['R']['pb'];
-  document.querySelector('#bishopBest').textContent = scores[gameMode]['B']['pb'];
-  document.querySelector('#knightBest').textContent = scores[gameMode]['N']['pb'];
-  document.querySelector('#pawnBest').textContent = scores[gameMode]['P']['pb'];
+  for (let p of pieces) {
+    document.querySelector(`#${full(p)}Best`).textContent = scores[gameMode][p]['pb'];
+    document.querySelector(`#${full(p)}Count`).textContent = pieceCount[p];
+  }
 };
 
 board.addEventListener('change', e => {
@@ -246,24 +238,19 @@ board.addEventListener('change', e => {
 });
 
 
-
-
 document.querySelector('#modeSwitch').addEventListener('change', () => {
   gameMode = document.querySelector('#modeSwitch').checked ? 'MIN' : 'MAX';
 
   // Update Possible Scores
   const possible = scores[gameMode];
-  document.querySelector('#kingPossible').textContent = possible['K']['wr'];
-  document.querySelector('#queenPossible').textContent = possible['Q']['wr'];
-  document.querySelector('#rookPossible').textContent = possible['R']['wr'];
-  document.querySelector('#bishopPossible').textContent = possible['B']['wr'];
-  document.querySelector('#knightPossible').textContent = possible['N']['wr'];
-  document.querySelector('#pawnPossible').textContent = possible['P']['wr'];
+  for (let p of pieces) {
+    document.querySelector(`#${full(p)}Possible`).textContent = possible[p]['wr'];
+  }
 
   updateStats(board.position);
 });
 
-for (let piece of ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn']) {
+for (let piece of pieces.map(p => full(p))) {
   document.querySelector(`#${piece}Btn`)
     .addEventListener('click', () => board.setPosition(solve(piece, gameMode)));
 }
