@@ -9,16 +9,21 @@
     />
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" type="text/css" media="screen" href="styles.css" />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      media="screen"
+      href="style/global.css"
+    />
     <script
       type="module"
       src="https://unpkg.com/chessboard-element?module"
     ></script>
 
-    <link rel="stylesheet" type="text/css" href="materialize.min.css" />
-    <script src="materialize.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="style/materialize.min.css" />
+    <script src="style/materialize.min.js"></script>
 
-    <script defer type="module" src="main.js"></script>
+    <script defer type="module" src="scripts/main.js"></script>
   </head>
   <body>
     <div class="row">
@@ -27,7 +32,7 @@
           <chess-board id="board"> </chess-board>
         </div>
 
-        <div class="row">
+        <div class="row no-select">
           <div class="col s12">
             <p>
               <label>
