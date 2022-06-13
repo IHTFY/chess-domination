@@ -29,7 +29,7 @@ const board = document.querySelector('#board');
 board.sparePieces = true;
 board.draggablePieces = true;
 board.dropOffBoard = 'trash';
-board.pieceTheme = piece => `https://lichess1.org/assets/_a8WL5z/piece/alpha/${piece}.svg`;
+board.pieceTheme = piece => `/svg/${piece}.svg`;
 
 
 // Check if board position is valid solution for the current game mode
