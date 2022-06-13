@@ -265,7 +265,7 @@ document.querySelector('#modeSwitch').addEventListener('change', () => {
 
 for (let piece of ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn']) {
   document.querySelector(`#${piece}Btn`)
-    .addEventListener('click', () => board.setPosition(solve(piece)));
+    .addEventListener('click', () => board.setPosition(solve(piece, gameMode)));
 }
 
 clearBtn.addEventListener('click', () => board.clear());
