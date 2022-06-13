@@ -5,7 +5,7 @@ import {
   letter,
   transpose,
   getSymmetries,
-} from '../utils.js';
+} from './utils.js';
 
 
 /** Solutions */

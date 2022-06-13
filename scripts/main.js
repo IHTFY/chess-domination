@@ -1,8 +1,8 @@
 // remove black pieces
 document.querySelector('#board').shadowRoot.querySelector('[part=spare-pieces]').remove();
 
-import { full, letter, index, countPieces } from '../utils.js';
-import { solve } from '../solver.js';
+import { full, letter, index, countPieces } from './utils.js';
+import { solve } from './solver.js';
 
 /** GLOBAL VARIABLES */
 let gameMode = 'MAX';
