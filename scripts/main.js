@@ -84,7 +84,7 @@ const isValid = (pos, mode) => {
           covered.add(letter(i) + 0); // bottom
         }
 
-        const oob = covered.size;
+        const oob = covered.size; // 36
 
         for (let p of occupied) {
           // add all the squares around the king
