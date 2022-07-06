@@ -1,4 +1,4 @@
-import { objToFen, fenToObj } from '../chessboard-element.bundled.js';
+import { objToFen, fenToObj } from './chessboard-element.bundled.js';
 import {
   pickRandom,
   shuffle,
