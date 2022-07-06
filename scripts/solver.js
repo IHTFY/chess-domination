@@ -1,4 +1,4 @@
-import { objToFen, fenToObj } from 'https://unpkg.com/chessboard-element@1.2.0/lib/chessboard-element.js?module';
+import { objToFen, fenToObj } from '../chessboard-element.bundled.js';
 import {
   pickRandom,
   shuffle,
@@ -6,7 +6,6 @@ import {
   transpose,
   getSymmetries,
 } from './utils.js';
-
 
 /** Solutions */
 const solveKing = mode => {
