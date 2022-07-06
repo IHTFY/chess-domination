@@ -1,4 +1,4 @@
-import { objToFen, fenToObj } from '../chessboard-element.bundled.js';
+import { objToFen, fenToObj } from './chessboard-element.bundled.js';
 
 // array utility functions
 const pickRandom = arr => arr[Math.floor(Math.random() * arr.length)];
