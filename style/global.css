@@ -30,3 +30,18 @@ body {
   -ms-user-select: none;
   user-select: none;
 }
+
+@property --num {
+  syntax: "<integer>";
+  initial-value: 0;
+  inherits: false;
+}
+
+.animated-number {
+  transition: --num 1s;
+  counter-set: num var(--num);
+}
+
+.animated-number::after {
+  content: counter(num);
+}

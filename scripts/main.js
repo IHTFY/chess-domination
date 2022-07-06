@@ -62,8 +62,8 @@ const updateStats = pos => {
 
   // Update table
   for (let p of pieces) {
-    document.querySelector(`#${full(p)}Best`).textContent = scores[gameMode][p]['pb'];
-    document.querySelector(`#${full(p)}Count`).textContent = pieceCount[p];
+    document.querySelector(`#${full(p)}Best`).style.setProperty('--num', parseInt(scores[gameMode][p]['pb']));
+    document.querySelector(`#${full(p)}Count`).style.setProperty('--num', parseInt(pieceCount[p]));
   }
 
   // save to localStorage
@@ -89,7 +89,7 @@ modeSwitch.addEventListener('change', () => {
   // Update Possible Scores
   const possible = scores[gameMode];
   for (let p of pieces) {
-    document.querySelector(`#${full(p)}Possible`).textContent = possible[p]['wr'];
+    document.querySelector(`#${full(p)}Possible`).style.setProperty('--num', parseInt(possible[p]['wr']));
   }
 
   updateStats(board.position);
