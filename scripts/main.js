@@ -81,6 +81,14 @@ const updateStats = pos => {
   // Update the personal best
   if (pass) {
     scores[gameMode][pieceType]['pb'] = Math[gameMode.toLowerCase()](scores[gameMode][pieceType]['pb'], pieceCount[pieceType]);
+  } else {
+    if (gameMode === 'MAX') {
+      // highlight attaking pieces
+      // TODO breakup isValid into several functions. Return all failures as an array of problem squares 
+    } else {
+      // highlight uncovered squares
+
+    }
   }
 
   syncTable(pos);

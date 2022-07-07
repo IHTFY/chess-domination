@@ -1,7 +1,7 @@
 import { letter, index, countPieces } from './utils.js';
 
 // Check if board position is valid solution for the current game mode
-export const isValid = (pos, mode) => {
+const isValid = (pos, mode) => {
   const occupied = Object.keys(pos);
 
   // if pos is empty, return false
@@ -177,3 +177,5 @@ export const isValid = (pos, mode) => {
       return false;
   }
 };
+
+export { isValid };
