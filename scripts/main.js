@@ -48,9 +48,20 @@ const syncData = () => {
 const syncTable = (pos) => {
   const pieceCount = countPieces(pos);
   for (let p of pieces) {
+    const wr = parseInt(scores[gameMode][p]['wr']);
+    const pb = parseInt(scores[gameMode][p]['pb']);
+    const diff = Math.abs(wr - pb);
+
     document.querySelector(`#${full(p)}Count`).style.setProperty('--num', parseInt(pieceCount[p]));
-    document.querySelector(`#${full(p)}Best`).style.setProperty('--num', parseInt(scores[gameMode][p]['pb']));
-    document.querySelector(`#${full(p)}Possible`).style.setProperty('--num', parseInt(scores[gameMode][p]['wr']));
+    document.querySelector(`#${full(p)}Best`).style.setProperty('--num', pb);
+    document.querySelector(`#${full(p)}Diff`).style.setProperty('--num', diff);
+    document.querySelector(`#${full(p)}Possible`).style.setProperty('--num', wr);
+
+    const diffRatio = Math.abs(pb - wr) / Math.max(pb, wr);
+    const diffScaled = Math.min(Math.max(Math.floor(255 * (1 - diffRatio)), 0), 255)
+    const diffColor = diffScaled.toString(16).padStart(2, '0');
+
+    document.querySelector(`#${full(p)}Diff`).style.color = `#FF${diffColor.repeat(2)}`;
   }
 };
 
@@ -64,7 +75,7 @@ const updateStats = pos => {
   document.querySelectorAll('[id*=Count]').forEach(e => e.style.color = 'white');
   // make text green if valid and red if not
   if (pieceType) {
-    document.querySelector(`#${full(pieceType)}Count`).style.color = pass ? 'green' : 'red';
+    document.querySelector(`#${full(pieceType)}Count`).style.color = pass ? '#00FF00' : '#FF0000';
   };
 
   // Update the personal best

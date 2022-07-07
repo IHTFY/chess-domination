@@ -20,6 +20,11 @@ body {
 
 #stats {
   font-size: 2rem;
+  font-weight: 700;
+}
+
+[id*="Possible"] {
+  color: #00FF00;
 }
 
 .no-select {
