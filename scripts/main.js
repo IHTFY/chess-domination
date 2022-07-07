@@ -26,13 +26,9 @@ const defaultScores = {
 
 /** GLOBAL VARIABLES */
 let gameMode = localStorage.getItem('gameMode') ?? 'MAX';
-let scores = JSON.parse(localStorage.getItem('scores')) ?? defaultScores;
+let scores = JSON.parse(localStorage.getItem('scores')) ?? structuredClone(defaultScores);
 
-const syncData = () => {
-  localStorage.setItem('gameMode', gameMode);
-  localStorage.setItem('scores', JSON.stringify(scores));
-};
-
+/** GLOBAL CONSTANTS */
 const pieces = Object.keys(scores[gameMode]);
 
 const board = document.querySelector('#board');
@@ -42,13 +38,28 @@ board.dropOffBoard = 'trash';
 board.pieceTheme = piece => `/svg/${piece}.svg`;
 
 
+// Store data in localStorage
+const syncData = () => {
+  localStorage.setItem('gameMode', gameMode);
+  localStorage.setItem('scores', JSON.stringify(scores));
+};
+
+// Update table to match stats
+const syncTable = (pos) => {
+  const pieceCount = countPieces(pos);
+  for (let p of pieces) {
+    document.querySelector(`#${full(p)}Count`).style.setProperty('--num', parseInt(pieceCount[p]));
+    document.querySelector(`#${full(p)}Best`).style.setProperty('--num', parseInt(scores[gameMode][p]['pb']));
+    document.querySelector(`#${full(p)}Possible`).style.setProperty('--num', parseInt(scores[gameMode][p]['wr']));
+  }
+};
+
 const updateStats = pos => {
   const pieceCount = countPieces(pos);
-
   const pieceType = Object.values(pos)[0]?.[1];
   const pass = isValid(pos, gameMode);
 
-  // default white
+  // default white text
   document.querySelectorAll('[id*=Count]').forEach(e => e.style.color = 'white');
   // make text green if valid and red if not
   if (pieceType) {
@@ -60,36 +71,35 @@ const updateStats = pos => {
     scores[gameMode][pieceType]['pb'] = Math[gameMode.toLowerCase()](scores[gameMode][pieceType]['pb'], pieceCount[pieceType]);
   }
 
-  // Update table
-  for (let p of pieces) {
-    document.querySelector(`#${full(p)}Best`).style.setProperty('--num', parseInt(scores[gameMode][p]['pb']));
-    document.querySelector(`#${full(p)}Count`).style.setProperty('--num', parseInt(pieceCount[p]));
-  }
-
-  // save to localStorage
+  syncTable(pos);
   syncData();
 };
 
 board.addEventListener('change', e => {
   const { value, oldValue } = e.detail;
   updateStats(value);
+  syncTable(value);
 });
 
 
-// initialize board based on saved Best values
-updateStats(board.position);
+syncTable(board.position);
 
 // initialize, based on localStorage
 const modeSwitch = document.querySelector('#modeSwitch');
 modeSwitch.checked = gameMode === 'MIN';
+
+// initialize Possible Scores
+for (let p of pieces) {
+  document.querySelector(`#${full(p)}Possible`).style.setProperty('--num', parseInt(scores[gameMode][p]['wr']));
+}
+
 modeSwitch.addEventListener('change', () => {
   gameMode = modeSwitch.checked ? 'MIN' : 'MAX';
   syncData();
 
   // Update Possible Scores
-  const possible = scores[gameMode];
   for (let p of pieces) {
-    document.querySelector(`#${full(p)}Possible`).style.setProperty('--num', parseInt(possible[p]['wr']));
+    document.querySelector(`#${full(p)}Possible`).style.setProperty('--num', parseInt(scores[gameMode][p]['wr']));
   }
 
   updateStats(board.position);
@@ -102,7 +112,7 @@ for (let piece of pieces.map(p => full(p))) {
 
 clearBtn.addEventListener('click', () => board.clear());
 resetBtn.addEventListener('click', () => {
-  scores = defaultScores;
+  scores = structuredClone(defaultScores);
   syncData();
-  updateStats(board.position);
+  syncTable(board.position);
 });
