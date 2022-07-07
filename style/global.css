@@ -38,7 +38,7 @@ body {
 }
 
 .animated-number {
-  transition: --num 1s;
+  transition: --num 0.5s;
   counter-set: num var(--num);
 }
 
