@@ -72,7 +72,7 @@ const updateStats = pos => {
   const pass = isValid(pos, gameMode);
 
   // default white text
-  document.querySelectorAll('[id*=Count]').forEach(e => e.style.color = 'white');
+  document.querySelectorAll('[id*=Count]').forEach(e => e.style.color = '#FFFFFF');
   // make text green if valid and red if not
   if (pieceType) {
     document.querySelector(`#${full(pieceType)}Count`).style.color = pass ? '#00FF00' : '#FF0000';
