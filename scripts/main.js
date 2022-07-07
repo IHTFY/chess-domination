@@ -54,6 +54,7 @@ const syncTable = (pos) => {
   }
 };
 
+// check the board and update the score and table
 const updateStats = pos => {
   const pieceCount = countPieces(pos);
   const pieceType = Object.values(pos)[0]?.[1];
