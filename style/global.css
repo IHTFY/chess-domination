@@ -1,11 +1,9 @@
-html,
-body {
-  background-color: #00181f;
-  color: white;
+.boardContainer {
+  border-radius: 1rem;
+  padding: 1rem;
 }
 
-.boardContainer {
-  background-color: #404040;
+#options {
   border-radius: 1rem;
   padding: 1rem;
 }
