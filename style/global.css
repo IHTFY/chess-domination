@@ -1,6 +1,7 @@
 .boardContainer {
   border-radius: 1rem;
   padding: 1rem;
+  margin-bottom: 1rem;
 }
 
 #options {
@@ -16,6 +17,7 @@
 }
 
 #stats {
+  border-radius: 1rem;
   font-size: 2rem;
   font-weight: 700;
 }
