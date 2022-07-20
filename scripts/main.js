@@ -1,6 +1,11 @@
 // remove black pieces
 document.querySelector('#board').shadowRoot.querySelector('[part=spare-pieces]').remove();
 
+// init solutions collapsible
+document.addEventListener('DOMContentLoaded', function () {
+  M.Collapsible.init(document.querySelectorAll('.collapsible'));
+});
+
 import { full, countPieces } from './utils.js';
 import { solve } from './solver.js';
 import { isValid } from './isValid.js';

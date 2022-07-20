@@ -7,12 +7,11 @@ body {
 .boardContainer {
   background-color: #404040;
   border-radius: 1rem;
-  min-height: 480px;
-  margin-bottom: -9rem;
-  padding: 1rem 1rem 5rem 1rem;
+  padding: 1rem;
 }
 
 #board {
+  margin-bottom: -3em;
   --light-color: #e6f2ff;
   --dark-color: #002b40;
   --highlight-color: #ffff00;
@@ -24,7 +23,7 @@ body {
 }
 
 [id*="Possible"] {
-  color: #00FF00;
+  color: #00ff00;
 }
 
 .no-select {
