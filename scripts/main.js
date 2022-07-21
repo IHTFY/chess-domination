@@ -3,13 +3,10 @@ const clicks = [...Array(7)].map((_, i) => new Audio(`sounds/click${i + 1}.mp3`)
 const beeps = (new Audio('sounds/beeps.mp3'))
 beeps.volume = 0.3;
 
+const numberAnimationDuration = n => [...document.querySelectorAll('.animated-number')].forEach(el => el.style.setProperty('--beeps-duration', n));
+
 // remove black pieces
 document.querySelector('#board').shadowRoot.querySelector('[part=spare-pieces]').remove();
-
-// init solutions collapsible
-document.addEventListener('DOMContentLoaded', function () {
-  M.Collapsible.init(document.querySelectorAll('.collapsible'));
-});
 
 import { full, countPieces } from './utils.js';
 import { solve } from './solver.js';
@@ -148,5 +145,7 @@ resetBtn.addEventListener('click', () => {
   scores = structuredClone(defaultScores);
   syncData();
   syncTable(board.position);
+  numberAnimationDuration('1.5s');
   beeps.play();
+  beeps.addEventListener('ended', () => numberAnimationDuration('0.2s'));
 });
