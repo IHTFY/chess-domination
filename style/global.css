@@ -42,7 +42,8 @@
 }
 
 .animated-number {
-  transition: --num 1.5s linear;
+  --beeps-duration: 0.2s;
+  transition: --num var(--beeps-duration) linear;
   counter-set: num var(--num);
 }
 
