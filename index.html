@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>Domination</title>
-
+    <link rel="manifest" href="manifest.json" />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
@@ -21,7 +21,6 @@
       sizes="16x16"
       href="/favicons/favicon-16x16.png"
     />
-    <link rel="manifest" href="/favicons/site.webmanifest" />
     <link
       rel="mask-icon"
       href="/favicons/safari-pinned-tab.svg"
@@ -51,8 +50,27 @@
       src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7816252471679024"
       crossorigin="anonymous"
     ></script>
+
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/@pwabuilder/pwainstall"
+    ></script>
   </head>
   <body>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("./service-worker.js")
+            .then((reg) => {
+              console.log("Service worker registered.", reg);
+            })
+            .catch((err) => {
+              console.error("Service worker not registered.", err);
+            });
+        });
+      }
+    </script>
     <div class="row">
       <div class="col s12 l6 xl4 center-align">
         <div class="boardContainer s12 grey darken-3">
