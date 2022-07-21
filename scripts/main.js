@@ -1,3 +1,6 @@
+const soundSwitch = document.querySelector('#soundSwitch');
+soundSwitch.checked = JSON.parse(localStorage.getItem('soundMode')) ?? true;
+
 let index = 0;
 const clicks = [...Array(7)].map((_, i) => new Audio(`sounds/click${i + 1}.mp3`));
 const beeps = (new Audio('sounds/beeps.mp3'))
@@ -104,8 +107,10 @@ const updateStats = pos => {
 
 board.addEventListener('change', e => {
   const { value, oldValue } = e.detail;
-  if (Object.keys(value)?.length >= Object.keys(oldValue)?.length) {
-    clicks[index++ % clicks.length].play()
+  if (soundSwitch.checked) {
+    if (Object.keys(value)?.length >= Object.keys(oldValue)?.length) {
+      clicks[index++ % clicks.length].play()
+    }
   }
   updateStats(value);
   syncTable(value);
@@ -122,6 +127,10 @@ modeSwitch.checked = gameMode === 'MIN';
 for (let p of pieces) {
   document.querySelector(`#${full(p)}Possible`).style.setProperty('--num', parseInt(scores[gameMode][p]['wr']));
 }
+
+soundSwitch.addEventListener('change', () => {
+  localStorage.setItem('soundMode', JSON.stringify(soundSwitch.checked));
+});
 
 modeSwitch.addEventListener('change', () => {
   gameMode = modeSwitch.checked ? 'MIN' : 'MAX';
@@ -145,7 +154,9 @@ resetBtn.addEventListener('click', () => {
   scores = structuredClone(defaultScores);
   syncData();
   syncTable(board.position);
-  numberAnimationDuration('1.5s');
-  beeps.play();
-  beeps.addEventListener('ended', () => numberAnimationDuration('0.2s'));
+  if (soundSwitch.checked) {
+    numberAnimationDuration('1.5s');
+    beeps.play();
+    beeps.addEventListener('ended', () => numberAnimationDuration('0.2s'));
+  }
 });
