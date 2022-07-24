@@ -1,6 +1,11 @@
 const soundSwitch = document.querySelector('#soundSwitch');
 soundSwitch.checked = JSON.parse(localStorage.getItem('soundMode')) ?? true;
 
+const highlightSwitch = document.querySelector('#highlightSwitch');
+highlightSwitch.checked = JSON.parse(localStorage.getItem('hilight')) ?? true;
+
+
+
 let index = 0;
 const clicks = [...Array(7)].map((_, i) => new Audio(`sounds/click${i + 1}.mp3`));
 const beeps = (new Audio('sounds/beeps.mp3'))
@@ -13,7 +18,8 @@ document.querySelector('#board').shadowRoot.querySelector('[part=spare-pieces]')
 
 import { full, countPieces } from './utils.js';
 import { solve } from './solver.js';
-import { isValid } from './isValid.js';
+import { isEmpty, findIssues } from './findIssues.js';
+import { clearHighlights, highlight } from './highlighter.js';
 
 const defaultScores = {
   'MAX': {
@@ -79,26 +85,22 @@ const syncTable = (pos) => {
 const updateStats = pos => {
   const pieceCount = countPieces(pos);
   const pieceType = Object.values(pos)[0]?.[1];
-  const pass = isValid(pos, gameMode);
+  const issues = findIssues(pos, gameMode);
 
   // default white text
   document.querySelectorAll('[id*=Count]').forEach(e => e.style.color = '#FFFFFF');
   // make text green if valid and red if not
   if (pieceType) {
-    document.querySelector(`#${full(pieceType)}Count`).style.color = pass ? '#00FF00' : '#FF0000';
+    document.querySelector(`#${full(pieceType)}Count`).style.color = issues.length === 0 ? '#00FF00' : '#FF0000';
   };
 
+  clearHighlights();
+
   // Update the personal best
-  if (pass) {
+  if (issues.length === 0 && !isEmpty(pos)) {
     scores[gameMode][pieceType]['pb'] = Math[gameMode.toLowerCase()](scores[gameMode][pieceType]['pb'], pieceCount[pieceType]);
   } else {
-    if (gameMode === 'MAX') {
-      // highlight attaking pieces
-      // TODO breakup isValid into several functions. Return all failures as an array of problem squares 
-    } else {
-      // highlight uncovered squares
-
-    }
+    if (highlightSwitch.checked) highlight(issues);
   }
 
   syncTable(pos);
@@ -130,6 +132,11 @@ for (let p of pieces) {
 
 soundSwitch.addEventListener('change', () => {
   localStorage.setItem('soundMode', JSON.stringify(soundSwitch.checked));
+});
+
+highlightSwitch.addEventListener('change', () => {
+  localStorage.setItem('hilight', JSON.stringify(highlightSwitch.checked));
+  highlightSwitch.checked ? updateStats(board.position) : clearHighlights();
 });
 
 modeSwitch.addEventListener('change', () => {
