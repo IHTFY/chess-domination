@@ -16,9 +16,9 @@ const numberAnimationDuration = n => [...document.querySelectorAll('.animated-nu
 // remove black pieces
 document.querySelector('#board').shadowRoot.querySelector('[part=spare-pieces]').remove();
 
-import { full, countPieces } from './utils.js';
+import { full, countPieces, isEmpty } from './utils.js';
 import { solve } from './solver.js';
-import { isEmpty, findIssues } from './findIssues.js';
+import { findIssues } from './findIssues.js';
 import { clearHighlights, highlight } from './highlighter.js';
 
 const defaultScores = {

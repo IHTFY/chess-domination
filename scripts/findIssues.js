@@ -1,13 +1,6 @@
 import { letter, index, countPieces } from './utils.js';
 
 /**
- * Returns whether the board is empty or not
- * @param {object} pos the board position
- * @returns {boolean} `true` if there are no pieces on the board
- */
-const isEmpty = (pos) => Object.keys(pos).length === 0;
-
-/**
  * Returns an array of piece types on the board. e.g. ['B', 'K']
  * @param {object} pos the board position
  * @returns {[string]} an array of pieces on the board
@@ -97,4 +90,4 @@ const findIssues = (pos, mode) => {
   }
 };
 
-export { isEmpty, findIssues };
+export { findIssues };
