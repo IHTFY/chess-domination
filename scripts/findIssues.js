@@ -35,7 +35,7 @@ const attacking = (pieceType, a, b) => {
     case 'R': return dx === 0 || dy === 0;
     case 'B': return dx === dy || dx === -dy;
     case 'N': return (dx === 2 && dy === 1) || (dx === 1 & dy === 2);
-    case 'P': return dx === 1 && dy === 1;
+    case 'P': return dx === 1 && ((a[1] - b[1]) === -1);
     default: return false;
   }
 };
@@ -67,8 +67,12 @@ const findIssues = (pos, mode) => {
     let interference = new Set();
     for (let i = 0; i < occupied.length - 1; i++) {
       for (let j = i + 1; j < occupied.length; j++) {
+        // pawns aren't symmetric attackers, so check both orders
         if (attacking(pieceType, occupied[i], occupied[j])) {
-          interference.add(occupied[i]).add(occupied[j]);
+          interference.add(occupied[i]);
+        }
+        if (attacking(pieceType, occupied[j], occupied[i])) {
+          interference.add(occupied[j]);
         }
       }
     }
@@ -79,7 +83,7 @@ const findIssues = (pos, mode) => {
     for (let i = 1; i <= 8; i++) {
       for (let j = 1; j <= 8; j++) {
         const testSquare = letter(i) + j;
-        if (occupied.some(piece => attacking(pieceType, testSquare, piece) || piece === testSquare)) {
+        if (occupied.some(piece => attacking(pieceType, piece, testSquare) || piece === testSquare)) {
           continue;
         } else {
           uncovered.push(testSquare);
