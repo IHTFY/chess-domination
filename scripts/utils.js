@@ -57,6 +57,13 @@ const countPieces = pos => Object.values(pos).reduce((a, c) => {
   return a;
 }, { 'K': 0, 'Q': 0, 'R': 0, 'B': 0, 'N': 0, 'P': 0 });
 
+/**
+ * Returns whether the board is empty or not
+ * @param {object} pos the board position
+ * @returns {boolean} `true` if there are no pieces on the board
+ */
+const isEmpty = (pos) => Object.keys(pos).length === 0;
+
 export {
   pickRandom,
   shuffle,
@@ -69,4 +76,5 @@ export {
   transpose,
   getSymmetries,
   countPieces,
+  isEmpty
 };
