@@ -6,7 +6,8 @@ const CACHE_NAME = 'static-cache-v1';
 // Add list of files to cache here.
 const FILES_TO_CACHE = [
   '/scripts/chessboard-element.bundled.js',
-  '/scripts/isValid.js',
+  '/scripts/findIssues.js',
+  '/scripts/highlighter.js',
   '/scripts/main.js',
   '/scripts/solver.js',
   '/scripts/utils.js',
