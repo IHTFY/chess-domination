@@ -144,3 +144,61 @@ test('mode switch remains clickable on a narrow screen', async ({ page }) => {
   await page.click('#queenBtn');
   await expect.poll(() => page.evaluate(() => Object.keys(document.querySelector('#board').position).length)).toBe(5);
 });
+
+const viewports = [
+  [320, 568], [375, 667], [390, 844], [768, 1024], // portrait
+  [568, 320], [667, 375], [844, 390], [1024, 768], // landscape
+  [1366, 768], [1920, 1080], [2560, 1080], // desktop
+];
+for (const [width, height] of viewports) {
+  test(`layout fits ${width}x${height} without scrolling or overlap`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await ready(page);
+    await page.click('#queenBtn');
+    const layout = await page.evaluate(() => {
+      const rect = (el, selector) => {
+        const r = el.getBoundingClientRect();
+        return r.width && r.height ? { selector, left: r.left, top: r.top, right: r.right, bottom: r.bottom } : null;
+      };
+      const content = ['#topbar', '#board', '#options', '#statsPanel']
+        .map(selector => rect(document.querySelector(selector), selector)).filter(Boolean);
+      const controls = [...document.querySelectorAll('#topbar > *, #options .btn, #options .switch, #stats > div')]
+        .map(el => rect(el, el.id || el.className)).filter(Boolean);
+      const statsCells = [...document.querySelectorAll('#stats > div')];
+      return {
+        scroll: [document.scrollingElement.scrollWidth, document.scrollingElement.scrollHeight],
+        content,
+        controls,
+        popup: getComputedStyle(document.querySelector('#statsBtn')).display !== 'none',
+        clipped: statsCells.filter(el => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1).length,
+      };
+    });
+    expect(layout.scroll).toEqual([width, height]);
+    const inside = r => r.left >= -0.5 && r.top >= -0.5 && r.right <= width + 0.5 && r.bottom <= height + 0.5;
+    expect(layout.content.filter(r => !inside(r))).toEqual([]);
+    expect(layout.controls.filter(r => !inside(r))).toEqual([]);
+    const overlaps = [];
+    layout.content.forEach((a, i) => layout.content.slice(i + 1).forEach(b => {
+      if (a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5) {
+        overlaps.push([a.selector, b.selector]);
+      }
+    }));
+    expect(overlaps).toEqual([]);
+    expect(layout.content.map(r => r.selector)).toContain(layout.popup ? '#options' : '#statsPanel');
+    if (!layout.popup) expect(layout.clipped).toBe(0);
+  });
+}
+
+test('scores open in a dismissible popup on short screens', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await ready(page);
+  await expect(page.locator('#statsPanel')).toBeHidden();
+  await page.click('#statsBtn');
+  await expect(page.locator('#statsPanel')).toBeVisible();
+  await page.click('#resetBtn');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#statsPanel')).toBeHidden();
+  await page.click('#statsBtn');
+  await page.click('#statsClose');
+  await expect(page.locator('#statsPanel')).toBeHidden();
+});

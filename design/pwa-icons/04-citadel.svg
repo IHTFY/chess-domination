@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title id="title">Chess Domination — Citadel</title>
+<desc id="desc">A cream rook carved into a warm vermilion seal.</desc>
+<rect width="512" height="512" fill="#c85436"/>
+<circle cx="256" cy="256" r="172" fill="#a33a28"/>
+<circle cx="256" cy="256" r="153" fill="none" stroke="#ed9c6e" stroke-width="3"/>
+<path d="M160 163H203V198H233V163H279V198H309V163H352V236L324 263 334 333H178L188 263 160 236Z" fill="#fff0d5"/>
+<path d="M229 333V284A27 27 0 0 1 283 284V333Z" fill="#a33a28"/>
+<rect x="162" y="349" width="188" height="29" rx="6" fill="#fff0d5"/>
+<path d="M187 246H325" stroke="#a33a28" stroke-width="10"/>
+</svg>

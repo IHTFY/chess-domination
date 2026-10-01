@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title id="title">Chess Domination — Dominion</title>
+<desc id="desc">A black D assembled around a checkerboard counter on acid yellow.</desc>
+<rect width="512" height="512" fill="#d9ed70"/>
+<path d="M143 122H251C339 122 388 171 388 256S339 390 251 390H143Z" fill="#262334"/>
+<path d="M209 189H247C297 189 319 212 319 256S297 323 247 323H209Z" fill="#d9ed70"/>
+<path d="M209 189H247V227H209ZM247 227H285V265H247ZM209 265H247V303H209ZM285 265H321V303H285Z" fill="#262334"/>
+<path d="M143 122H190V169H143Z" fill="#8f75d5"/>
+<path d="M143 343H190V390H143Z" fill="#8f75d5"/>
+</svg>

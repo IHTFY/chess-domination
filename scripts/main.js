@@ -28,6 +28,10 @@ await customElements.whenDefined('chess-board');
 await board.updateComplete;
 // Hide the black spare pieces after the component has rendered.
 board.shadowRoot.querySelector('[part=spare-pieces]')?.remove();
+// Overlay the drag layer instead of reserving an empty row below the board.
+const boardStyle = document.createElement('style');
+boardStyle.textContent = '#dragged-pieces { position: absolute; top: 0; left: 0; }';
+board.shadowRoot.append(boardStyle);
 board.sparePieces = true;
 board.draggablePieces = true;
 board.dropOffBoard = 'trash';
@@ -125,6 +129,20 @@ for (let piece of pieces.map(p => full(p))) {
   document.querySelector(`#${piece}Btn`)
     .addEventListener('click', () => board.setPosition(solve(piece, gameMode)));
 }
+
+// On small screens the score table opens as a popup.
+const app = document.querySelector('#app');
+const statsBtn = document.querySelector('#statsBtn');
+const setStatsOpen = open => {
+  app.classList.toggle('stats-open', open);
+  statsBtn.setAttribute('aria-expanded', open);
+};
+statsBtn.addEventListener('click', () => setStatsOpen(true));
+document.querySelector('#statsClose').addEventListener('click', () => setStatsOpen(false));
+document.querySelector('#statsBackdrop').addEventListener('click', () => setStatsOpen(false));
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') setStatsOpen(false);
+});
 
 document.querySelector('#clearBtn').addEventListener('click', () => board.clear());
 document.querySelector('#resetBtn').addEventListener('click', () => {

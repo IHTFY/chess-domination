@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title id="title">Chess Domination — Control Grid</title>
+<desc id="desc">A coral queen marks the center of a mint board with radiating control lines.</desc>
+<rect width="512" height="512" fill="#132923"/>
+<rect x="106" y="106" width="300" height="300" rx="40" fill="#234d40"/>
+<g fill="#bdebc9">
+<rect x="124" y="124" width="76" height="76" rx="13"/>
+<rect x="218" y="124" width="76" height="76" rx="13" opacity=".35"/>
+<rect x="312" y="124" width="76" height="76" rx="13"/>
+<rect x="124" y="218" width="76" height="76" rx="13" opacity=".35"/>
+<rect x="312" y="218" width="76" height="76" rx="13" opacity=".35"/>
+<rect x="124" y="312" width="76" height="76" rx="13"/>
+<rect x="218" y="312" width="76" height="76" rx="13" opacity=".35"/>
+<rect x="312" y="312" width="76" height="76" rx="13"/>
+</g>
+<path d="M164 164 348 348M164 348 348 164M162 256H350M256 162V350" stroke="#132923" stroke-width="13" stroke-linecap="round"/>
+<rect x="206" y="206" width="100" height="100" rx="23" fill="#ff836b"/>
+<path d="M224 234 241 249 256 226 271 249 288 234 280 272H232Z" fill="#132923"/>
+<path d="M234 282H278" stroke="#132923" stroke-width="8" stroke-linecap="round"/>
+</svg>
