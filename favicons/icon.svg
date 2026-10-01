@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title id="title">Chess Domination — Total Field Blue</title>
+<desc id="desc">A blue queen sits at the intersection of eight rays, surrounded by a circular field over the board.</desc>
+<rect x="0" y="0" width="512" height="512" rx="0" fill="#0b1730"/>
+<rect x="114" y="114" width="52" height="52" rx="4" fill="#31577c"/>
+<rect x="172" y="114" width="52" height="52" rx="4" fill="#203c60"/>
+<rect x="230" y="114" width="52" height="52" rx="4" fill="#31577c"/>
+<rect x="288" y="114" width="52" height="52" rx="4" fill="#203c60"/>
+<rect x="346" y="114" width="52" height="52" rx="4" fill="#31577c"/>
+<rect x="114" y="172" width="52" height="52" rx="4" fill="#203c60"/>
+<rect x="172" y="172" width="52" height="52" rx="4" fill="#31577c"/>
+<rect x="230" y="172" width="52" height="52" rx="4" fill="#203c60"/>
+<rect x="288" y="172" width="52" height="52" rx="4" fill="#31577c"/>
+<rect x="346" y="172" width="52" height="52" rx="4" fill="#203c60"/>
+<rect x="114" y="230" width="52" height="52" rx="4" fill="#31577c"/>
+<rect x="172" y="230" width="52" height="52" rx="4" fill="#203c60"/>
+<rect x="230" y="230" width="52" height="52" rx="4" fill="#31577c"/>
+<rect x="288" y="230" width="52" height="52" rx="4" fill="#203c60"/>
+<rect x="346" y="230" width="52" height="52" rx="4" fill="#31577c"/>
+<rect x="114" y="288" width="52" height="52" rx="4" fill="#203c60"/>
+<rect x="172" y="288" width="52" height="52" rx="4" fill="#31577c"/>
+<rect x="230" y="288" width="52" height="52" rx="4" fill="#203c60"/>
+<rect x="288" y="288" width="52" height="52" rx="4" fill="#31577c"/>
+<rect x="346" y="288" width="52" height="52" rx="4" fill="#203c60"/>
+<rect x="114" y="346" width="52" height="52" rx="4" fill="#31577c"/>
+<rect x="172" y="346" width="52" height="52" rx="4" fill="#203c60"/>
+<rect x="230" y="346" width="52" height="52" rx="4" fill="#31577c"/>
+<rect x="288" y="346" width="52" height="52" rx="4" fill="#203c60"/>
+<rect x="346" y="346" width="52" height="52" rx="4" fill="#31577c"/>
+<circle cx="256" cy="256" r="141" fill="none" stroke="#8bd0ff" stroke-width="9"/>
+<path d="M140 140 372 372M140 372 372 140M140 256H372M256 140V372" stroke="#8bd0ff" stroke-width="7" stroke-linecap="round"/>
+<circle cx="140" cy="140" r="11" fill="#8bd0ff"/>
+<circle cx="372" cy="140" r="11" fill="#8bd0ff"/>
+<circle cx="140" cy="372" r="11" fill="#8bd0ff"/>
+<circle cx="372" cy="372" r="11" fill="#8bd0ff"/>
+<path d="M256 180 332 256 256 332 180 256Z" fill="#0b1730"/>
+<path d="M256 190 322 256 256 322 190 256Z" fill="#8bd0ff"/>
+<g transform="translate(256 254) scale(0.95)" fill="#0b1730">
+<path d="M-36-23-18-8 0-33 18-8 36-23 27 19H-27Z"/>
+<rect x="-26" y="27" width="52" height="8" rx="4"/>
+</g>
+</svg>
