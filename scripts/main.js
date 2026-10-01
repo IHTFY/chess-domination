@@ -1,64 +1,48 @@
-const soundSwitch = document.querySelector('#soundSwitch');
-soundSwitch.checked = JSON.parse(localStorage.getItem('soundMode')) ?? true;
-
-const highlightSwitch = document.querySelector('#highlightSwitch');
-highlightSwitch.checked = JSON.parse(localStorage.getItem('hilight')) ?? true;
-
-
-
-let index = 0;
-const clicks = [...Array(7)].map((_, i) => new Audio(`sounds/click${i + 1}.mp3`));
-const beeps = (new Audio('sounds/beeps.mp3'))
-beeps.volume = 0.3;
-
-const numberAnimationDuration = n => [...document.querySelectorAll('.animated-number')].forEach(el => el.style.setProperty('--beeps-duration', n));
-
-// remove black pieces
-document.querySelector('#board').shadowRoot.querySelector('[part=spare-pieces]').remove();
-
+import { defaultScores, readBoolean, readMode, readScores, writeStored } from './storage.js';
 import { full, countPieces, isEmpty } from './utils.js';
 import { solve } from './solver.js';
 import { findIssues } from './findIssues.js';
 import { clearHighlights, highlight } from './highlighter.js';
 
-const defaultScores = {
-  'MAX': {
-    'K': { 'pb': 0, 'wr': 16 },
-    'Q': { 'pb': 0, 'wr': 8 },
-    'R': { 'pb': 0, 'wr': 8 },
-    'B': { 'pb': 0, 'wr': 14 },
-    'N': { 'pb': 0, 'wr': 32 },
-    'P': { 'pb': 0, 'wr': 32 },
-  },
-  'MIN': {
-    'K': { 'pb': 64, 'wr': 9 },
-    'Q': { 'pb': 64, 'wr': 5 },
-    'R': { 'pb': 64, 'wr': 8 },
-    'B': { 'pb': 64, 'wr': 8 },
-    'N': { 'pb': 64, 'wr': 12 },
-    'P': { 'pb': 64, 'wr': 32 },
-  },
-};
+const soundSwitch = document.querySelector('#soundSwitch');
+soundSwitch.checked = readBoolean('soundMode');
 
-/** GLOBAL VARIABLES */
-let gameMode = localStorage.getItem('gameMode') ?? 'MAX';
-let scores = JSON.parse(localStorage.getItem('scores')) ?? structuredClone(defaultScores);
+const highlightSwitch = document.querySelector('#highlightSwitch');
+highlightSwitch.checked = readBoolean('hilight');
+
+let index = 0;
+const clicks = [...Array(7)].map((_, i) => new Audio(`sounds/click${i + 1}.mp3`));
+const beeps = new Audio('sounds/beeps.mp3');
+beeps.volume = 0.3;
+
+const numberAnimationDuration = n => [...document.querySelectorAll('.animated-number')].forEach(el => el.style.setProperty('--beeps-duration', n));
+
+let gameMode = readMode();
+let scores = readScores();
 
 /** GLOBAL CONSTANTS */
 const pieces = Object.keys(scores[gameMode]);
 
 const board = document.querySelector('#board');
+await customElements.whenDefined('chess-board');
+await board.updateComplete;
+// Hide the black spare pieces after the component has rendered.
+board.shadowRoot.querySelector('[part=spare-pieces]')?.remove();
 board.sparePieces = true;
 board.draggablePieces = true;
 board.dropOffBoard = 'trash';
-board.pieceTheme = piece => `/svg/${piece}.svg`;
-
+board.pieceTheme = piece => `svg/${piece}.svg`;
 
 // Store data in localStorage
 const syncData = () => {
-  localStorage.setItem('gameMode', gameMode);
-  localStorage.setItem('scores', JSON.stringify(scores));
+  writeStored('gameMode', gameMode);
+  writeStored('scores', JSON.stringify(scores));
 };
+
+const playSound = (audio, onFailure = () => {}) => {
+  audio.play().catch(onFailure);
+};
+beeps.addEventListener('ended', () => numberAnimationDuration('0.2s'));
 
 // Update table to match stats
 const syncTable = (pos) => {
@@ -74,7 +58,7 @@ const syncTable = (pos) => {
     document.querySelector(`#${full(p)}Possible`).style.setProperty('--num', wr);
 
     const diffRatio = Math.abs(pb - wr) / Math.max(pb, wr);
-    const diffScaled = Math.min(Math.max(Math.floor(255 * (1 - diffRatio)), 0), 255)
+    const diffScaled = Math.min(Math.max(Math.floor(255 * (1 - diffRatio)), 0), 255);
     const diffColor = diffScaled.toString(16).padStart(2, '0');
 
     document.querySelector(`#${full(p)}Diff`).style.color = `#FF${diffColor.repeat(2)}`;
@@ -111,13 +95,11 @@ board.addEventListener('change', e => {
   const { value, oldValue } = e.detail;
   if (soundSwitch.checked) {
     if (Object.keys(value)?.length >= Object.keys(oldValue)?.length) {
-      clicks[index++ % clicks.length].play()
+      playSound(clicks[index++ % clicks.length]);
     }
   }
   updateStats(value);
-  syncTable(value);
 });
-
 
 syncTable(board.position);
 
@@ -125,29 +107,17 @@ syncTable(board.position);
 const modeSwitch = document.querySelector('#modeSwitch');
 modeSwitch.checked = gameMode === 'MIN';
 
-// initialize Possible Scores
-for (let p of pieces) {
-  document.querySelector(`#${full(p)}Possible`).style.setProperty('--num', parseInt(scores[gameMode][p]['wr']));
-}
-
 soundSwitch.addEventListener('change', () => {
-  localStorage.setItem('soundMode', JSON.stringify(soundSwitch.checked));
+  writeStored('soundMode', JSON.stringify(soundSwitch.checked));
 });
 
 highlightSwitch.addEventListener('change', () => {
-  localStorage.setItem('hilight', JSON.stringify(highlightSwitch.checked));
+  writeStored('hilight', JSON.stringify(highlightSwitch.checked));
   highlightSwitch.checked ? updateStats(board.position) : clearHighlights();
 });
 
 modeSwitch.addEventListener('change', () => {
   gameMode = modeSwitch.checked ? 'MIN' : 'MAX';
-  syncData();
-
-  // Update Possible Scores
-  for (let p of pieces) {
-    document.querySelector(`#${full(p)}Possible`).style.setProperty('--num', parseInt(scores[gameMode][p]['wr']));
-  }
-
   updateStats(board.position);
 });
 
@@ -156,14 +126,13 @@ for (let piece of pieces.map(p => full(p))) {
     .addEventListener('click', () => board.setPosition(solve(piece, gameMode)));
 }
 
-clearBtn.addEventListener('click', () => board.clear());
-resetBtn.addEventListener('click', () => {
+document.querySelector('#clearBtn').addEventListener('click', () => board.clear());
+document.querySelector('#resetBtn').addEventListener('click', () => {
   scores = structuredClone(defaultScores);
   syncData();
   syncTable(board.position);
   if (soundSwitch.checked) {
     numberAnimationDuration('1.5s');
-    beeps.play();
-    beeps.addEventListener('ended', () => numberAnimationDuration('0.2s'));
+    playSound(beeps, () => numberAnimationDuration('0.2s'));
   }
 });

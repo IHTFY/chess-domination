@@ -10,7 +10,6 @@
 }
 
 #board {
-  margin-bottom: -3em;
   --light-color: #e6f2ff;
   --dark-color: #002b40;
   --highlight-color: #ffff00;

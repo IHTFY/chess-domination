@@ -34,7 +34,7 @@ const attacking = (pieceType, a, b) => {
     case 'Q': return dx === 0 || dy === 0 || dx === dy || dx === -dy;
     case 'R': return dx === 0 || dy === 0;
     case 'B': return dx === dy || dx === -dy;
-    case 'N': return (dx === 2 && dy === 1) || (dx === 1 & dy === 2);
+    case 'N': return (dx === 2 && dy === 1) || (dx === 1 && dy === 2);
     case 'P': return dx === 1 && ((a[1] - b[1]) === -1);
     default: return false;
   }
