@@ -1,29 +1,402 @@
-.boardContainer {
-  border-radius: 1rem;
-  padding: 1rem;
-  margin-bottom: 1rem;
+/*
+ * Layout: the whole app fits the viewport without page scrolling.
+ * Portrait stacks the board above the controls and a transposed score table;
+ * landscape puts a sidebar beside the board. Very short screens move the
+ * scores into a scrollable popup.
+ */
+:root {
+  /* Board height divided by width, including the spare-piece row. */
+  --board-ratio: 1.15;
+  --pad: clamp(0.25rem, 1.5vmin, 1rem);
+  --gap: clamp(0.25rem, 1.2vmin, 0.75rem);
+  --radius: clamp(0.5rem, 1.5vmin, 1rem);
+  --panel: #424242;
+  --panel-dark: #212121;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  /* Scale for the top bar and controls. */
+  --ui: 1rem;
 }
 
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#app {
+  --view-w: calc(100vw - var(--safe-left) - var(--safe-right) - 2 * var(--pad));
+  --view-h: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 2 * var(--pad));
+  box-sizing: border-box;
+  height: 100dvh;
+  padding: calc(var(--pad) + var(--safe-top)) calc(var(--pad) + var(--safe-right))
+    calc(var(--pad) + var(--safe-bottom)) calc(var(--pad) + var(--safe-left));
+  display: grid;
+  gap: var(--gap);
+  justify-content: center;
+  align-content: center;
+}
+
+#app *,
+#app *::before,
+#app *::after {
+  box-sizing: border-box;
+}
+
+.panel {
+  background: var(--panel);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+
+/* Top bar */
+#topbar,
 #options {
-  border-radius: 1rem;
-  padding: 1rem;
+  font-size: var(--ui);
+}
+
+#topbar .material-icons,
+#options .material-icons {
+  font-size: 1.5em;
+}
+
+#topbar {
+  grid-area: top;
+  container-type: inline-size;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25em;
+  padding: 0.25em 0.5em;
+  min-height: 2.75em;
+}
+
+#topbar a,
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25em;
+  height: 2.25em;
+  color: #039be5;
+}
+
+.icon-btn,
+.icon-btn:focus {
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+
+#gh_logo {
+  display: block;
+}
+
+.switch label {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  font-size: 0.85em;
+  color: #bdbdbd;
+}
+
+.switch label .lever {
+  margin: 0 0.5em;
+  flex: none;
+}
+
+/* Board */
+#boardPanel {
+  grid-area: board;
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
 }
 
 #board {
   --light-color: #e6f2ff;
   --dark-color: #002b40;
   --highlight-color: #ffff00;
+  width: min(100cqw, 100cqh / var(--board-ratio));
+  flex: none;
+}
+
+/* Controls */
+#options {
+  grid-area: options;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  padding: 0.5em;
+  background: var(--panel-dark);
+  container-type: inline-size;
+}
+
+.options-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+}
+
+#options .btn {
+  font-size: 1em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25em;
+  height: calc(2.5 * var(--ui));
+  padding: 0 0.75em;
+  margin: 0;
+  line-height: 1;
+}
+
+.solve-row {
+  display: grid;
+  grid-template-columns: auto repeat(6, minmax(0, 1fr));
+  align-items: center;
+  gap: 0.375em;
+}
+
+.solve-label {
+  font-size: 0.85em;
+  color: #bdbdbd;
+  padding-right: 0.25em;
+}
+
+#options .solve-row .btn {
+  width: 100%;
+  padding: 0;
+  font-size: 1.75em;
+}
+
+@container (max-width: 21rem) {
+  #topbar .switch label {
+    font-size: 0.8em;
+  }
+
+  #topbar .switch label .lever {
+    margin: 0 0.3em;
+  }
+
+  #topbar a,
+  #topbar .icon-btn {
+    min-width: 1.75em;
+  }
+}
+
+@container (max-width: 22rem) {
+  #clearBtn {
+    padding: 0 0.5em;
+  }
+
+  #clearBtn span {
+    display: none;
+  }
+
+  .switch label {
+    font-size: 0.8em;
+  }
+
+  .switch label .lever {
+    margin: 0 0.25em;
+  }
+}
+
+/* Scores */
+#statsPanel {
+  grid-area: stats;
+  container-type: size;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#statsBtn,
+#statsClose,
+#statsBackdrop {
+  display: none;
 }
 
 #stats {
-  border-radius: 1rem;
-  font-size: 2rem;
+  display: grid;
+  gap: 2px;
+  height: 100%;
+  background: var(--panel);
   font-weight: 700;
+  text-align: center;
+  font-size: clamp(0.9rem, min(7cqh, 5cqw), 3rem);
+}
+
+#stats > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
   overflow: hidden;
+}
+
+#stats .head,
+#stats .corner,
+#stats .piece {
+  background: var(--panel);
+}
+
+#stats .head {
+  font-size: 0.8em;
+}
+
+#stats .material-icons {
+  font-size: 1.1em;
+}
+
+#stats .animated-number {
+  background: var(--panel-dark);
+}
+
+#resetBtn {
+  font-size: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: min(1.6em, 2.75rem, 90%);
+  height: min(1.6em, 2.75rem, 90%);
+  padding: 0;
+  margin: 0;
+}
+
+#resetBtn .material-icons {
+  font-size: 1em;
 }
 
 [id*="Possible"] {
   color: #00ff00;
+}
+
+/* Portrait: board, controls, then a table with one column per piece. */
+#app {
+  /* Top bar, controls and minimum table height, so panels match the board width. */
+  --fixed-h: calc(2.75 * var(--ui) + 6.5 * var(--ui) + 7.5rem + 3 * var(--gap));
+  --col-w: min(var(--view-w), 40rem, (var(--view-h) - var(--fixed-h)) / var(--board-ratio));
+  grid-template-columns: var(--col-w);
+  /* The board grows up to full width; the table takes any remaining height. */
+  grid-template-rows: auto minmax(0, calc(var(--col-w) * var(--board-ratio))) auto minmax(7.5rem, 1fr);
+  grid-template-areas: "top" "board" "options" "stats";
+}
+
+#stats {
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+  grid-template-columns: minmax(4.5em, auto) repeat(6, minmax(0, 1fr));
+  grid-auto-flow: column;
+  font-size: clamp(0.85rem, min(11cqh, 5cqw), 2.25rem);
+}
+
+#stats .head {
+  font-size: 0.7em;
+}
+
+/* Landscape: board on the left, sidebar on the right. */
+@media (min-aspect-ratio: 1/1) {
+  :root {
+    --ui: clamp(1rem, 2vh, 1.5rem);
+  }
+
+  #app {
+    --side-min: 18rem;
+    --board-w: min(var(--view-h) / var(--board-ratio), var(--view-w) - var(--side-min) - var(--gap));
+    grid-template-columns: var(--board-w) minmax(var(--side-min), min(var(--view-w) - var(--board-w) - var(--gap), 1.1 * var(--board-w)));
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas: "board top" "board options" "board stats";
+    height: 100dvh;
+    align-content: stretch;
+  }
+
+  #stats {
+    grid-template-rows: auto repeat(6, minmax(0, 1fr));
+    grid-template-columns: minmax(3em, 0.7fr) repeat(4, minmax(0, 1fr));
+    grid-auto-flow: row;
+    font-size: clamp(0.85rem, min(9cqh, 6cqw), 3rem);
+  }
+
+  #stats .head {
+    padding: 0.4em 0;
+    font-size: 0.75em;
+  }
+}
+
+/* Too short for an inline table: scores open in a scrollable popup. */
+@media (max-aspect-ratio: 1/1) and (max-height: 599px),
+  (min-aspect-ratio: 1/1) and (max-height: 359px) {
+  #app {
+    --col-w: min(var(--view-w), 40rem, (var(--view-h) - 9.25 * var(--ui) - 2 * var(--gap)) / var(--board-ratio));
+    grid-template-rows: auto minmax(0, calc(var(--col-w) * var(--board-ratio))) auto;
+    grid-template-areas: "top" "board" "options";
+  }
+
+  #statsBtn {
+    display: inline-flex;
+  }
+
+  #statsPanel {
+    display: none;
+  }
+
+  .stats-open #statsBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgb(0 0 0 / 60%);
+  }
+
+  .stats-open #statsPanel {
+    display: block;
+    position: fixed;
+    z-index: 101;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(28rem, 100vw - 2rem);
+    max-height: calc(100dvh - 2rem);
+    container-type: normal;
+    overflow-y: auto;
+    padding: 2.75rem 0.5rem 0.5rem;
+  }
+
+  .stats-open #statsClose {
+    display: inline-flex;
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    color: #fff;
+  }
+
+  #stats {
+    height: auto;
+    grid-template-rows: none;
+    grid-template-columns: 3em repeat(4, minmax(0, 1fr));
+    grid-auto-rows: 2.75rem;
+    grid-auto-flow: row;
+    font-size: 1.25rem;
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+}
+
+@media (min-aspect-ratio: 1/1) and (max-height: 359px) {
+  #app {
+    grid-template-rows: 1fr auto auto 1fr;
+    grid-template-areas: "board ." "board top" "board options" "board .";
+  }
 }
 
 .no-select {
