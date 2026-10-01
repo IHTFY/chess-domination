@@ -1,6 +1,6 @@
 // Bump the version whenever a precached file changes.
 const CACHE_PREFIX = `chess-domination-${self.registration.scope}-`;
-const CACHE_NAME = `${CACHE_PREFIX}v3`;
+const CACHE_NAME = `${CACHE_PREFIX}v4`;
 
 const FILES_TO_CACHE = [
   './scripts/chessboard-element.bundled.js',
@@ -11,6 +11,11 @@ const FILES_TO_CACHE = [
   './scripts/utils.js',
   './scripts/storage.js',
   './manifest.json',
+  './favicons/icon.svg',
+  './favicons/favicon.ico',
+  './favicons/browserconfig.xml',
+  './favicons/maskable-192x192.png',
+  './favicons/maskable-512x512.png',
   './favicons/apple-touch-icon.png',
   './favicons/favicon-16x16.png',
   './favicons/favicon-32x32.png',
