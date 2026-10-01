@@ -423,3 +423,9 @@ body {
 .animated-number::after {
   content: counter(num);
 }
+
+.toast .toast-action {
+  margin-left: 1rem;
+  color: #82b1ff;
+  font-weight: 600;
+}

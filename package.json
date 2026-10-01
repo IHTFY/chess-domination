@@ -10,8 +10,10 @@
     "start": "python3 -m http.server 8000 --bind 127.0.0.1",
     "lint": "eslint .",
     "test": "node --test tests/storage.test.js && playwright test",
-    "check": "npm run lint && npm run check:vendor && npm test",
+    "check": "pnpm lint && pnpm check:vendor && pnpm check:sw && pnpm test",
     "check:vendor": "node tools/check-vendor.js",
+    "sw:stamp": "node tools/stamp-sw.js",
+    "check:sw": "node tools/stamp-sw.js --check",
     "icons:generate": "node tools/generate-icons.js"
   },
   "dependencies": {
@@ -23,5 +25,6 @@
     "@playwright/test": "1.63.0",
     "eslint": "10.11.0",
     "globals": "17.13.0"
-  }
+  },
+  "packageManager": "pnpm@12.8.1"
 }

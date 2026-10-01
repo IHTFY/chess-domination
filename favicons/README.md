@@ -6,9 +6,9 @@ is navy `#0b1730`, slate blues `#203c60` / `#31577c`, and pale blue `#8bd0ff`.
 Regenerate with the pinned Playwright Chromium renderer:
 
 ```sh
-npm ci
-npx playwright install chromium
-npm run icons:generate
+pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
+pnpm icons:generate
 ```
 
 Outputs:
@@ -23,7 +23,7 @@ Do not bake rounded corners into the assets. The manifest separates standard and
 maskable purposes; the HTML declares Apple touch and favicon fallbacks. The manifest
 ID deliberately matches the previous inferred identity (`./index.html`).
 
-Run `npm run check` after regeneration and bump the service-worker cache version
+Run `pnpm check` after regeneration and bump the service-worker cache version
 when changing assets. Browser tests check manifest parsing/installability in Chromium,
 actual icon sizes, maskable safe zones, opaque backgrounds, and offline asset access.
 Native installation on Apple and Android devices is not covered by these tests.
