@@ -48,6 +48,7 @@
     <script src="style/materialize.min.js"></script>
 
     <script defer type="module" src="scripts/main.js"></script>
+    <script defer type="module" src="scripts/pwa.js"></script>
     <script
       async
       src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7816252471679024"
@@ -55,20 +56,6 @@
     ></script>
   </head>
   <body>
-    <script>
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker
-            .register("./service-worker.js")
-            .then((reg) => {
-              console.log("Service worker registered.", reg);
-            })
-            .catch((err) => {
-              console.error("Service worker not registered.", err);
-            });
-        });
-      }
-    </script>
     <div id="app">
       <header id="topbar" class="panel">
         <a

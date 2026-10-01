@@ -1,4 +1,7 @@
+import { readFileSync, writeFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
+
+const workerPath = new URL('../../service-worker.js', import.meta.url);
 
 test('manifest parses and declares decodable icons with accurate sizes and safe masks', async ({ page, context }) => {
   await context.route(/^https?:\/\/(?!127\.0\.0\.1:8765(?:\/|$))/, route => route.abort());
@@ -63,4 +66,24 @@ test('manifest, install artwork and favicon fallbacks remain available offline',
     return Promise.all(urls.map(async url => ({ url, ok: (await fetch(url)).ok })));
   });
   expect(results.filter(result => !result.ok)).toEqual([]);
+});
+
+test('a changed service worker waits, prompts, and reloads only when the user accepts', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForFunction(() => navigator.serviceWorker.controller);
+  // Playwright cannot intercept worker script fetches, so change the file itself.
+  const original = readFileSync(workerPath, 'utf8');
+  try {
+    writeFileSync(workerPath, `${original}\n// test update\n`);
+  await page.evaluate(() => navigator.serviceWorker.getRegistration().then(reg => reg.update()));
+  const action = page.locator('.toast .toast-action');
+  await expect(action).toBeVisible();
+  expect(await page.evaluate(() => navigator.serviceWorker.getRegistration().then(reg => Boolean(reg.waiting)))).toBe(true);
+  const reloaded = page.waitForEvent('load');
+  await action.click();
+  await reloaded;
+  await page.waitForFunction(() => navigator.serviceWorker.controller);
+  } finally {
+    writeFileSync(workerPath, original);
+  }
 });
