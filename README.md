@@ -27,7 +27,8 @@ On Linux CI, install browser OS dependencies with `npx playwright install --with
 The check runs ESLint, verifies the vendored dependencies, tests storage recovery,
 and runs Chromium regression tests. Browser coverage includes 6,000 seeded solver
 positions across all pieces and modes, validator edge cases, controls and score
-persistence, blocked audio/storage, and offline reload with the HTTP cache disabled.
+persistence, blocked audio/storage, offline reload with the HTTP cache disabled, and
+no-scroll, no-overlap layouts across phone, tablet and desktop viewports.
 External scripts are blocked in tests. GitHub Actions runs these checks on PRs and master.
 
 ## Dependencies

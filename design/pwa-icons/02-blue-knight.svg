@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title id="title">Chess Domination — Blue Knight</title>
+<desc id="desc">An angular ivory knight with a lightning-cut mane on electric blue.</desc>
+<rect width="512" height="512" fill="#304ffe"/>
+<path d="M392 104V408H88Z" fill="#263cda"/>
+<path d="M177 129 218 150 281 133 334 184 352 245 338 292 302 333H349L370 381H149L169 335 222 283 239 241 200 257 161 244 134 205 174 169Z" fill="#f8f4e9"/>
+<path d="M281 133 284 204 310 225 276 288 338 245 318 183Z" fill="#b8c6ff"/>
+<path d="M176 168 203 181 218 150Z" fill="#112566"/>
+<path d="M210 202H230L216 219H201Z" fill="#112566"/>
+<path d="M165 352H346" stroke="#304ffe" stroke-width="12"/>
+</svg>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title id="title">Chess Domination — Sovereign</title>
+<desc id="desc">A gold queen with a crisp ivory pedestal on deep petrol.</desc>
+<rect width="512" height="512" fill="#112b35"/>
+<circle cx="256" cy="242" r="170" fill="#173b46"/>
+<path d="M145 185 203 220 256 143 309 220 367 185 335 295H177Z" fill="#eac16d"/>
+<circle cx="145" cy="177" r="18" fill="#eac16d"/>
+<circle cx="256" cy="135" r="18" fill="#eac16d"/>
+<circle cx="367" cy="177" r="18" fill="#eac16d"/>
+<path d="M192 313H320L330 339H182Z" fill="#f5edda"/>
+<rect x="167" y="355" width="178" height="30" rx="10" fill="#f5edda"/>
+<path d="M256 214 277 246 256 278 235 246Z" fill="#112b35"/>
+</svg>
