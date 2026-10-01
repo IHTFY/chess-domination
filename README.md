@@ -10,8 +10,8 @@ The site is static HTML, CSS and JavaScript; deployment needs no build step.
 Use Node.js 24 LTS (minimum 22.13) and Python 3 for the development tools:
 
 ```sh
-npm ci
-npm start
+pnpm install --frozen-lockfile
+pnpm start
 ```
 
 Open http://127.0.0.1:8000. Service workers require localhost or HTTPS.
@@ -20,7 +20,7 @@ Open http://127.0.0.1:8000. Service workers require localhost or HTTPS.
 
 ```sh
 npx playwright install chromium
-npm run check
+pnpm check
 ```
 
 On Linux CI, install browser OS dependencies with `npx playwright install --with-deps chromium`.
@@ -42,7 +42,7 @@ Runtime files remain committed so static hosting and offline play do not depend 
 | `chessboard-element` | 1.2.0 | `scripts/chessboard-element.bundled.js` from `bundled/` |
 | `@materializecss/materialize` | 1.1.0 | `style/materialize.min.css` and `.js` from `dist/css/` and `dist/js/` |
 
-`npm run check:vendor` compares these files with the installed packages, allowing
+`pnpm check:vendor` compares these files with the installed packages, allowing
 only historical line-ending and license-header whitespace differences. The Lit
 runtime is embedded in the chessboard bundle; updating a transitive npm dependency
 alone will not change that bundle.
@@ -52,19 +52,24 @@ Materialize [2.4.0 is available](https://github.com/materializecss/materialize/r
 but its major upgrade is deferred to the planned UI redesign and visual regression
 checks. The unused, unpinned `@pwabuilder/pwainstall` CDN import has been removed.
 
-To update a runtime dependency, install an exact version with `npm install --save-exact`,
-copy the corresponding published files into the locations above, update the service
-worker cache version, and run `npm run check`. Commit the lockfile and vendor files
+To update a runtime dependency, install an exact version with `pnpm add --save-exact`,
+copy the corresponding published files into the locations above, run `pnpm sw:stamp`, and run `pnpm check`. Commit the lockfile and vendor files
 alongside the change. No dependency update is deployed merely by editing the manifest.
 
 ## Offline caching and saved data
 
-The service worker precaches the app, serves known assets from its cache, and falls
-back to cached HTML when navigation fails offline. Bump the cache version in
-`service-worker.js` whenever a precached file changes, and list any new runtime files
-there. Cache names include this app's registration scope; activation deletes only
-older caches with that prefix. The old generic `static-cache-v1` cache is deliberately
-left alone because its name does not establish ownership on a shared origin.
+The service worker precaches the app and serves known assets from its cache. Navigation
+is network-first with a 3 second timeout, falling back to the cached shell when offline
+or on a flaky connection. Run `pnpm sw:stamp` after changing any precached file (or
+add new runtime files to `FILES_TO_CACHE` first): it stamps a content hash into
+`service-worker.js` as the cache version, and `pnpm check` fails if the stamp is stale.
+
+Updates never apply mid-game. A new worker installs in the background and waits; the page
+shows an "Update" toast, and choosing it activates the new worker and reloads. The page
+also checks for updates hourly and whenever it becomes visible. Cache names include this
+app's registration scope; activation deletes only older caches with that prefix. The old
+generic `static-cache-v1` cache is deliberately left alone because its name does not
+establish ownership on a shared origin.
 
 Settings and personal bests stay in local storage under the existing keys. Invalid
 or missing values recover to defaults while valid records survive. If storage is
