@@ -1,0 +1,26 @@
+{
+  "name": "chess-domination",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "python3 -m http.server 8000 --bind 127.0.0.1",
+    "lint": "eslint .",
+    "test": "node --test tests/storage.test.js && playwright test",
+    "check": "npm run lint && npm run check:vendor && npm test",
+    "check:vendor": "node tools/check-vendor.js"
+  },
+  "dependencies": {
+    "@materializecss/materialize": "1.1.0",
+    "chessboard-element": "1.2.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.63.0",
+    "eslint": "10.11.0",
+    "globals": "17.13.0"
+  }
+}
