@@ -1,6 +1,6 @@
 // Stamped by `pnpm sw:stamp` from the contents of every precached file, so any
 // change to the app changes this file byte-for-byte and browsers install an update.
-const VERSION = '3bb3bb4fba4d';
+const VERSION = '750e13785b39';
 const CACHE_PREFIX = `chess-domination-${self.registration.scope}-`;
 const CACHE_NAME = `${CACHE_PREFIX}${VERSION}`;
 
@@ -35,8 +35,6 @@ const FILES_TO_CACHE = [
   './sounds/click6.mp3',
   './sounds/click7.mp3',
   './style/global.css',
-  './style/materialize.min.css',
-  './style/materialize.min.js',
   './svg/bB.svg',
   './svg/bK.svg',
   './svg/bN.svg',

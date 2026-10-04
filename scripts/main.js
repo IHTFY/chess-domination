@@ -19,6 +19,37 @@ let gesture = null;
 let dragging = false;
 let cancelDrop = false;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const numberStates = new WeakMap();
+
+function animateNumber(element, target, prefix = '') {
+  let state = numberStates.get(element);
+  if (state?.target === target && state.prefix === prefix) return;
+  if (state) clearTimeout(state.timer);
+  const start = state?.value;
+  state = { value: start ?? target, target, prefix };
+  numberStates.set(element, state);
+  const immediate = !Number.isInteger(start) || !Number.isInteger(target) || reducedMotion.matches;
+  const step = immediate ? 0 : Math.sign(target - start);
+  const interval = Math.min(28, 280 / Math.max(1, Math.abs(target - start)));
+  const tick = () => {
+    state.value = step ? state.value + step : target;
+    element.textContent = prefix + state.value;
+    if (state.value !== target) state.timer = setTimeout(tick, interval);
+  };
+  if (immediate || start === target) tick();
+  else state.timer = setTimeout(tick, interval);
+}
+
+reducedMotion.addEventListener('change', () => {
+  if (!reducedMotion.matches) return;
+  for (const element of document.querySelectorAll('[data-quantity], #pieceCount, #optimalCount, #coveredCount, #totalCount')) {
+    const state = numberStates.get(element);
+    if (!state) continue;
+    clearTimeout(state.timer);
+    state.value = state.target;
+    element.textContent = state.prefix + state.target;
+  }
+});
 const clicks = Array.from({ length: 7 }, (_, i) => new Audio(`sounds/click${i + 1}.mp3`));
 const beeps = new Audio('sounds/beeps.mp3');
 beeps.volume = 0.3;
@@ -96,19 +127,31 @@ function decorateBoard() {
 function renderScores(pos) {
   const counts = countPieces(pos);
   $('score-goal').textContent = gameMode === 'MIN' ? 'Minimum' : 'Maximum';
-  $('score-body').innerHTML = pieces.map(piece => {
+  if (!$('score-body').children.length) $('score-body').innerHTML = pieces.map(piece => `
+    <tr data-score-piece="${piece}"><th scope="row">${names[piece]}</th>
+    <td id="${full(piece)}Count" data-quantity></td>
+    <td class="best-value"><span id="${full(piece)}Best" data-quantity></span><span class="score-difference" data-quantity></span></td>
+    <td class="score-optimal" data-quantity></td></tr>`).join('');
+  for (const piece of pieces) {
+    const row = document.querySelector(`[data-score-piece="${piece}"]`);
     const { pb, wr } = scores[gameMode][piece];
     const hasRecord = gameMode === 'MIN' ? pb !== 64 : pb !== 0;
     const gap = hasRecord ? Math.abs(pb - wr) : 0;
     const description = !hasRecord ? 'No valid board recorded' : gap === 0 ? 'Matches optimal' : gameMode === 'MIN'
       ? `${gap} extra piece${gap === 1 ? '' : 's'} above the minimum`
       : `${gap} piece${gap === 1 ? '' : 's'} below the maximum`;
-    const diff = gap > 0 ? `<span class="score-difference" aria-label="${description}">${gameMode === 'MIN' ? '+' : '−'}${gap}</span>` : '';
-    return `<tr data-score-piece="${piece}" class="${piece === selected ? 'active-score' : ''}">
-      <th scope="row">${names[piece]}</th><td id="${full(piece)}Count">${counts[piece]}</td>
-      <td class="best-value ${gap > 0 ? 'off-optimal' : ''}" title="${description}"><span id="${full(piece)}Best">${hasRecord ? pb : '–'}</span>${diff}</td>
-      <td>${wr}</td></tr>`;
-  }).join('');
+    row.classList.toggle('active-score', piece === selected);
+    const best = row.querySelector('.best-value');
+    best.classList.toggle('off-optimal', gap > 0);
+    best.title = description;
+    const diff = row.querySelector('.score-difference');
+    diff.hidden = gap === 0;
+    diff.setAttribute('aria-label', description);
+    animateNumber(diff, gap, gameMode === 'MIN' ? '+' : '−');
+    animateNumber($(`${full(piece)}Count`), counts[piece]);
+    animateNumber($(`${full(piece)}Best`), hasRecord ? pb : '–');
+    animateNumber(row.querySelector('.score-optimal'), wr);
+  }
   $('scores-note').textContent = 'Valid boards only. ' + (gameMode === 'MIN'
     ? '+ means extra pieces above the minimum.' : '− means missing pieces below the maximum.');
 }
@@ -127,18 +170,19 @@ function updateStats(pos) {
   }
   writeStored('gameMode', gameMode);
   writeStored('scores', JSON.stringify(scores));
-  $('pieceCount').textContent = count;
-  $('optimalCount').textContent = target;
+  animateNumber($('pieceCount'), count);
+  animateNumber($('optimalCount'), target);
   $('goal-label').textContent = gameMode === 'MIN' ? 'Minimum' : 'Maximum';
   const value = gameMode === 'MIN' ? (types.length > 1 ? 0 : 64 - issues.length) : count - issues.length;
   const total = gameMode === 'MIN' ? 64 : count;
-  $('coveredCount').textContent = value;
-  $('denominator').textContent = ` / ${total}`;
+  animateNumber($('coveredCount'), value);
+  animateNumber($('totalCount'), total);
   $('coverage-label').textContent = gameMode === 'MIN' ? 'Covered' : 'Safe pieces';
   $('progress').style.width = `${total ? value / total * 100 : 0}%`;
   $('selected-name').textContent = names[selected];
   $('dominationBtn').setAttribute('aria-pressed', String(gameMode === 'MIN'));
   $('nonAttackingBtn').setAttribute('aria-pressed', String(gameMode === 'MAX'));
+  document.querySelector('.mode').dataset.mode = gameMode;
   $('highlightSwitch').setAttribute('aria-pressed', String(hints));
   $('highlightSwitch').setAttribute('aria-label', gameMode === 'MIN' ? 'Highlight uncovered squares' : 'Highlight attacking pieces');
   if (types.length > 1) $('hint').textContent = 'Use one piece type at a time.';
@@ -250,7 +294,14 @@ $('exampleBtn').addEventListener('click', () => {
 });
 $('clearBtn').addEventListener('click', () => { cancelDrag(); board.clear(false); });
 for (const [id, mode] of [['dominationBtn', 'MIN'], ['nonAttackingBtn', 'MAX']]) {
-  $(id).addEventListener('click', () => { cancelDrag(); gameMode = mode; updateStats(board.position); });
+  $(id).addEventListener('click', () => {
+    if (gameMode === mode) return;
+    cancelDrag(); gameMode = mode; updateStats(board.position);
+    if (!reducedMotion.matches) for (const el of [$('goal-label'), $('coverage-label'), $('hint'), $('boardPanel')]) {
+      el.getAnimations().forEach(animation => animation.cancel());
+      el.animate([{ opacity: .45 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' });
+    }
+  });
 }
 $('highlightSwitch').addEventListener('click', () => {
   hints = !hints;
@@ -302,6 +353,26 @@ for (const [id, occupied] of [['coverage-demo', [[1, 2]]], ['safe-demo', [[0, 3]
     $(id).append(cell);
   }
 }
+const safeDemo = $('safe-demo');
+const svgNS = 'http://www.w3.org/2000/svg';
+const rays = document.createElementNS(svgNS, 'svg');
+rays.setAttribute('viewBox', '0 0 4 4');
+rays.classList.add('attack-rays');
+rays.innerHTML = '<defs>' + ['blue', 'red'].map(color => `<marker id="ray-${color}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="${color === 'blue' ? '#64b5ff' : '#ff7b86'}"/></marker>`).join('') + '</defs>';
+for (const [index, [x, y]] of [[0, 3], [2, 0]].entries()) {
+  const color = index === 0 ? 'blue' : 'red';
+  safeDemo.children[y * 4 + x].classList.add(`queen-${color}`);
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
+    const cx = x + .5, cy = y + .5;
+    const distance = Math.min(dx > 0 ? (3.88 - cx) / dx : dx < 0 ? (.12 - cx) / dx : Infinity,
+      dy > 0 ? (3.88 - cy) / dy : dy < 0 ? (.12 - cy) / dy : Infinity);
+    if (distance < .6) continue;
+    const line = document.createElementNS(svgNS, 'line');
+    for (const [name, value] of Object.entries({ x1: cx + dx * .35, y1: cy + dy * .35, x2: cx + dx * distance, y2: cy + dy * distance, stroke: color === 'blue' ? '#64b5ff' : '#ff7b86', 'marker-end': `url(#ray-${color})` })) line.setAttribute(name, value);
+    rays.append(line);
+  }
+}
+safeDemo.append(rays);
 syncSound();
 updateStats(board.position);
 decorateBoard();

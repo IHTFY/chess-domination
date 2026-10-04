@@ -41,10 +41,7 @@
 
     <script type="module" src="scripts/chessboard-element.bundled.js"></script>
 
-    <link rel="stylesheet" type="text/css" href="style/materialize.min.css" />
-    <!-- After Materialize so local overrides win. -->
     <link rel="stylesheet" type="text/css" href="style/global.css" />
-    <script src="style/materialize.min.js"></script>
 
     <script defer type="module" src="scripts/main.js"></script>
     <script defer type="module" src="scripts/pwa.js"></script>
@@ -65,7 +62,7 @@
 <section class="panel" id="options" aria-label="Game controls">
 <div class="mode" role="group" aria-label="Puzzle mode"><button id="nonAttackingBtn" aria-pressed="false">Non-attacking</button><button id="dominationBtn" aria-pressed="true">Domination</button></div>
 <div class="metrics"><div class="metric"><div class="label">Pieces</div><div class="number" id="pieceCount">0</div></div><div class="metric"><div class="label" id="goal-label">Minimum</div><div class="number" id="optimalCount">5</div></div>
-<button class="metric coverage" id="highlightSwitch" aria-label="Highlight uncovered squares" aria-pressed="true" title="Show or hide board hints"><span class="metric-head"><span class="label" id="coverage-label">Covered</span><svg class="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="2.6"/><path class="eye-slash" d="m4 3 16 18"/></svg></span><span class="number"><span id="coveredCount">0</span><small id="denominator"> / 64</small></span><span class="progress"><span id="progress"></span></span></button></div>
+<button class="metric coverage" id="highlightSwitch" aria-label="Highlight uncovered squares" aria-pressed="true" title="Show or hide board hints"><span class="metric-head"><span class="label" id="coverage-label">Covered</span><svg class="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="2.6"/><path class="eye-slash" d="m4 3 16 18"/></svg></span><span class="number"><span id="coveredCount">0</span><small id="denominator"> / <span id="totalCount">64</span></small></span><span class="progress"><span id="progress"></span></span></button></div>
 <div><div class="selection-label label"><span>Place a piece</span><span id="selected-name">Queen</span></div><div class="pieces" id="pieceTray" role="group" aria-label="Piece to place"></div></div>
 <div class="actions"><button class="action" id="clearBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></svg>Clear</button><button class="action primary" id="exampleBtn">Show example</button></div>
 <p class="hint" id="hint" role="status">Tap a square to place a queen. Tap again to remove it.</p>
