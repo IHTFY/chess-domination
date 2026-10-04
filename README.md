@@ -29,7 +29,10 @@ and runs Chromium regression tests. Browser coverage includes 6,000 seeded solve
 positions across all pieces and modes, validator edge cases, controls and score
 persistence, blocked audio/storage, offline reload with the HTTP cache disabled, and
 no-scroll, no-overlap layouts across phone, tablet and desktop viewports.
-External scripts are blocked in tests. GitHub Actions runs these checks on PRs and master.
+The cobalt interface also has checks for native mouse and touch dragging,
+keyboard placement, animated example generation, saved score differences,
+square instruction illustrations, and MP3 playback. External scripts are blocked
+in tests. GitHub Actions runs these checks on PRs and master.
 
 ## Dependencies
 
@@ -49,8 +52,8 @@ alone will not change that bundle.
 
 As checked on October 1, 2026, chessboard-element 1.2.0 is the latest stable release.
 Materialize [2.4.0 is available](https://github.com/materializecss/materialize/releases/tag/v2.4.0),
-but its major upgrade is deferred to the planned UI redesign and visual regression
-checks. The unused, unpinned `@pwabuilder/pwainstall` CDN import has been removed.
+but its major upgrade remains deferred. The cobalt interface uses local styles;
+Materialize still provides the service-worker update toast. The unused, unpinned `@pwabuilder/pwainstall` CDN import has been removed.
 
 To update a runtime dependency, install an exact version with `pnpm add --save-exact`,
 copy the corresponding published files into the locations above, run `pnpm sw:stamp`, and run `pnpm check`. Commit the lockfile and vendor files
