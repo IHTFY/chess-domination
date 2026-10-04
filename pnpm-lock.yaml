@@ -166,9 +166,6 @@ importers:
 
   .:
     dependencies:
-      '@materializecss/materialize':
-        specifier: 1.1.0
-        version: 1.1.0
       chessboard-element:
         specifier: 1.2.0
         version: 1.2.0
@@ -267,9 +264,6 @@ packages:
 
   '@lit/reactive-element@1.6.3':
     resolution: {integrity: sha512-QuTgnG52Poic7uM1AN5yJ09QMe0O28e10XzSvWDz02TJiiKee4stsiownEIadWm8nYzyDAyT+gKzUoZmiWQtsQ==}
-
-  '@materializecss/materialize@1.1.0':
-    resolution: {integrity: sha512-W2MrDC8mzpMWyP2OpS0RWTWGcLiRRBz7kn2E9TsbardPyVNFdoNvXq5sLy3NcEfAlACc1+L7Q95+pBuUX44dRg==}
 
   '@playwright/test@1.63.0':
     resolution: {integrity: sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ==}
@@ -619,8 +613,6 @@ snapshots:
   '@lit/reactive-element@1.6.3':
     dependencies:
       '@lit-labs/ssr-dom-shim': 1.6.0
-
-  '@materializecss/materialize@1.1.0': {}
 
   '@playwright/test@1.63.0':
     dependencies:

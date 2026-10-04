@@ -2,13 +2,15 @@
 const UPDATE_CHECK_MS = 60 * 60 * 1000;
 
 function promptForUpdate(worker) {
-  const toast = M.toast({
-    html: '<span>New version available</span><button class="btn-flat toast-action" type="button">Update</button>',
-    displayLength: 600000,
-  });
-  toast.el.querySelector('button').addEventListener('click', () => {
+  document.querySelector('.toast')?.remove();
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.setAttribute('role', 'status');
+  toast.innerHTML = '<span>New version available</span><button class="toast-action" type="button">Update</button>';
+  toast.querySelector('button').addEventListener('click', () => {
     worker.postMessage({ type: 'SKIP_WAITING' });
   });
+  document.body.append(toast);
 }
 
 async function init() {
