@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="black white-text">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>Domination</title>
@@ -25,15 +25,14 @@
     <link rel="icon" href="favicons/favicon.ico" sizes="16x16 32x32 48x48" />
     <link rel="icon" href="favicons/icon.svg" type="image/svg+xml" sizes="any" />
     <meta name="description" content="Chess puzzles about placing non-attacking pieces and controlling every square on the board." />
-    <meta name="theme-color" content="#0b1730" />
+    <meta name="theme-color" content="#070f20" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Domination" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="msapplication-config" content="favicons/browserconfig.xml" />
-    <meta name="msapplication-TileColor" content="#0b1730" />
+    <meta name="msapplication-TileColor" content="#070f20" />
 
-    <link href="style/icons/materialIcons.css" rel="stylesheet" />
 
     <meta
       name="viewport"
@@ -55,138 +54,49 @@
       crossorigin="anonymous"
     ></script>
   </head>
-  <body>
-    <div id="app">
-      <header id="topbar" class="panel">
-        <a
-          href="https://github.com/IHTFY/chess-domination"
-          target="_blank"
-          aria-label="Source on GitHub"
-        >
-          <svg id="gh_logo" viewBox="0 0 32 32" height="28" width="28">
-            <path
-              fill="#039be5"
-              d="M16 0C7.2 0 0 7.2 0 16c0 7.1 4.6 13 11 15 .8 .14 1.1-.34 1.1-.76 0-.38-.02-1.6-.02-3-4 .74-5.1-.98-5.4-1.9-.18-.46-.96-1.9-1.6-2.3-.56-.3-1.4-1-.02-1.1 1.3-.02 2.2 1.2 2.5 1.6 1.4 2.4 3.7 1.7 4.7 1.3 .14-1 .56-1.7 1-2.1-3.6-.4-7.3-1.8-7.3-7.9 0-1.7 .62-3.2 1.6-4.3-.16-.4-.72-2 .16-4.2 0 0 1.3-.42 4.4 1.6 1.3-.36 2.6-.54 4-.54 1.4 0 2.7 .18 4 .54 3.1-2.1 4.4-1.6 4.4-1.6 .88 2.2 .32 3.8 .16 4.2 1 1.1 1.6 2.5 1.6 4.3 0 6.1-3.7 7.5-7.3 7.9 .58 .5 1.1 1.5 1.1 3 0 2.1-.02 3.9-.02 4.4 0 .42 .3 .92 1.1 .76A16 16 0 0 0 32 16c0-8.8-7.2-16-16-16z"
-            ></path>
-          </svg>
-        </a>
-        <div class="switch">
-          <label>
-            Sound
-            <input id="soundSwitch" type="checkbox" checked="checked" />
-            <span class="lever"></span>
-          </label>
-        </div>
-        <div class="switch">
-          <label>
-            Highlight
-            <input id="highlightSwitch" type="checkbox" checked="checked" />
-            <span class="lever"></span>
-          </label>
-        </div>
-        <button
-          id="statsBtn"
-          class="icon-btn"
-          aria-label="Show scores"
-          aria-controls="statsPanel"
-        >
-          <i class="material-icons">leaderboard</i>
-        </button>
-        <a
-          href="https://ihtfy.com/domination"
-          target="_blank"
-          class="icon-btn"
-          aria-label="About"
-        >
-          <i class="material-icons">info</i>
-        </a>
-      </header>
-
-      <main id="boardPanel">
-        <chess-board id="board"> </chess-board>
-      </main>
-
-      <section id="options" class="panel no-select">
-        <div class="options-row">
-          <div class="switch">
-            <label>
-              Non-Attacking
-              <input id="modeSwitch" type="checkbox" />
-              <span class="lever"></span>
-              Domination
-            </label>
-          </div>
-          <button id="clearBtn" class="waves-effect btn red lighten-1">
-            <i class="material-icons">refresh</i><span>Clear</span>
-          </button>
-        </div>
-        <div class="solve-row">
-          <span class="solve-label">Solve</span>
-          <button id="kingBtn" class="waves-effect btn indigo" aria-label="Solve king">♔</button>
-          <button id="queenBtn" class="waves-effect btn indigo" aria-label="Solve queen">♕</button>
-          <button id="rookBtn" class="waves-effect btn indigo" aria-label="Solve rook">♖</button>
-          <button id="bishopBtn" class="waves-effect btn indigo" aria-label="Solve bishop">♗</button>
-          <button id="knightBtn" class="waves-effect btn indigo" aria-label="Solve knight">♘</button>
-          <button id="pawnBtn" class="waves-effect btn indigo" aria-label="Solve pawn">♙</button>
-        </div>
-      </section>
-
-      <div id="statsBackdrop"></div>
-      <section id="statsPanel" class="panel" aria-label="Scores">
-        <button id="statsClose" class="icon-btn" aria-label="Close scores">
-          <i class="material-icons">close</i>
-        </button>
-        <div id="stats" role="table" aria-label="Scores">
-          <div class="corner" role="columnheader">
-            <button
-              id="resetBtn"
-              class="waves-effect btn red"
-              aria-label="Reset scores"
-              title="Reset scores"
-            >
-              <i class="material-icons">clear</i>
-            </button>
-          </div>
-          <div class="head" role="columnheader" title="Pieces on board">
-            <i class="material-icons">numbers</i>
-          </div>
-          <div class="head" role="columnheader">Record</div>
-          <div class="head" role="columnheader" title="Difference from perfect">
-            <i class="material-icons">difference</i>
-          </div>
-          <div class="head" role="columnheader">Perfect</div>
-          <div class="piece" role="rowheader">♔</div>
-          <div class="animated-number" role="cell" id="kingCount"></div>
-          <div class="animated-number" role="cell" id="kingBest"></div>
-          <div class="animated-number" role="cell" id="kingDiff"></div>
-          <div class="animated-number" role="cell" id="kingPossible"></div>
-          <div class="piece" role="rowheader">♕</div>
-          <div class="animated-number" role="cell" id="queenCount"></div>
-          <div class="animated-number" role="cell" id="queenBest"></div>
-          <div class="animated-number" role="cell" id="queenDiff"></div>
-          <div class="animated-number" role="cell" id="queenPossible"></div>
-          <div class="piece" role="rowheader">♖</div>
-          <div class="animated-number" role="cell" id="rookCount"></div>
-          <div class="animated-number" role="cell" id="rookBest"></div>
-          <div class="animated-number" role="cell" id="rookDiff"></div>
-          <div class="animated-number" role="cell" id="rookPossible"></div>
-          <div class="piece" role="rowheader">♗</div>
-          <div class="animated-number" role="cell" id="bishopCount"></div>
-          <div class="animated-number" role="cell" id="bishopBest"></div>
-          <div class="animated-number" role="cell" id="bishopDiff"></div>
-          <div class="animated-number" role="cell" id="bishopPossible"></div>
-          <div class="piece" role="rowheader">♘</div>
-          <div class="animated-number" role="cell" id="knightCount"></div>
-          <div class="animated-number" role="cell" id="knightBest"></div>
-          <div class="animated-number" role="cell" id="knightDiff"></div>
-          <div class="animated-number" role="cell" id="knightPossible"></div>
-          <div class="piece" role="rowheader">♙</div>
-          <div class="animated-number" role="cell" id="pawnCount"></div>
-          <div class="animated-number" role="cell" id="pawnBest"></div>
-          <div class="animated-number" role="cell" id="pawnDiff"></div>
-          <div class="animated-number" role="cell" id="pawnPossible"></div>
-        </div>
-      </section>
-    </div>
-  </body>
+<body>
+<div class="app" id="app">
+<header id="topbar"><div class="brand"><img src="favicons/icon.svg" alt=""><h1>Domination</h1></div><div class="header-actions">
+<button class="icon-button" id="soundSwitch" aria-label="Sound" aria-pressed="false" title="Sound"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4 6 8H3v8h3l5 4V4Zm4 4a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/><path class="sound-slash" d="m3 3 18 18"/></svg></button>
+<button class="icon-button" id="statsBtn" aria-label="Show scores" title="Scores" aria-controls="statsPanel" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10h4v10m2 0V4h4v16m2 0V7h4v13M2 20h20"/></svg></button>
+<button class="icon-button" id="aboutBtn" aria-label="How to play" title="How to play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/></svg></button>
+</div></header>
+<main class="layout"><section class="stage" id="boardPanel" aria-label="Game board"><div class="board-wrap"><chess-board id="board" aria-label="Chessboard"></chess-board></div></section>
+<section class="panel" id="options" aria-label="Game controls">
+<div class="mode" role="group" aria-label="Puzzle mode"><button id="nonAttackingBtn" aria-pressed="false">Non-attacking</button><button id="dominationBtn" aria-pressed="true">Domination</button></div>
+<div class="metrics"><div class="metric"><div class="label">Pieces</div><div class="number" id="pieceCount">0</div></div><div class="metric"><div class="label" id="goal-label">Minimum</div><div class="number" id="optimalCount">5</div></div>
+<button class="metric coverage" id="highlightSwitch" aria-label="Highlight uncovered squares" aria-pressed="true" title="Show or hide board hints"><span class="metric-head"><span class="label" id="coverage-label">Covered</span><svg class="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="2.6"/><path class="eye-slash" d="m4 3 16 18"/></svg></span><span class="number"><span id="coveredCount">0</span><small id="denominator"> / 64</small></span><span class="progress"><span id="progress"></span></span></button></div>
+<div><div class="selection-label label"><span>Place a piece</span><span id="selected-name">Queen</span></div><div class="pieces" id="pieceTray" role="group" aria-label="Piece to place"></div></div>
+<div class="actions"><button class="action" id="clearBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></svg>Clear</button><button class="action primary" id="exampleBtn">Show example</button></div>
+<p class="hint" id="hint" role="status">Tap a square to place a queen. Tap again to remove it.</p>
+</section></main></div>
+<dialog class="dialog scores-dialog" id="statsPanel" aria-labelledby="scores-title">
+  <div class="dialog-head"><h2 id="scores-title">Scores</h2><div class="scores-actions"><button id="statsClose" class="icon-button close" aria-label="Close scores" data-close>✕</button></div></div>
+  <div class="stats-legend"><span class="legend-mark" aria-hidden="true"></span>Pieces from optimal</div>
+  <table aria-describedby="scores-note"><thead><tr><th scope="col">Piece</th><th scope="col" aria-label="Pieces on board">Board</th><th scope="col">Best</th><th scope="col" id="score-goal">Minimum</th></tr></thead><tbody id="score-body"></tbody></table>
+  <div class="scores-footer"><p id="scores-note" class="scores-note">Only valid boards count toward your best.</p><button id="resetBtn" class="reset-scores">Reset scores</button></div>
+</dialog>
+<dialog class="dialog help-dialog" id="instructions" aria-labelledby="instructions-title">
+  <div class="dialog-head"><h2 id="instructions-title">How to play</h2><button class="icon-button close" aria-label="Close instructions" data-close>✕</button></div>
+  <div class="rule-cards">
+    <section class="rule-card domination-rule" aria-labelledby="domination-rule-title">
+      <div class="mini-board" id="coverage-demo" aria-hidden="true"></div>
+      <div class="rule-copy"><div class="rule-heading"><h3 id="domination-rule-title">Domination</h3><span class="rule-tag">Fewer pieces</span></div><p>Cover <strong>every square</strong> by occupying or attacking it.</p></div>
+    </section>
+    <section class="rule-card safe-rule" aria-labelledby="safe-rule-title">
+      <div class="mini-board" id="safe-demo" aria-hidden="true"></div>
+      <div class="rule-copy"><div class="rule-heading"><h3 id="safe-rule-title">Non-attacking</h3><span class="rule-tag">More pieces</span></div><p>Fit as many pieces as you can. <strong>None may attack another.</strong></p></div>
+    </section>
+  </div>
+  <div class="gesture-card">
+    <span class="help-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V5a2 2 0 0 1 4 0v5l4 1c2 .5 3 2 2 4l-2 6H9l-5-6a2 2 0 0 1 3-3l2 2M3 5h2m12 0h2M5 2l1 1m10-1-1 1"/></svg></span>
+    <div><h3>Tap or drag</h3><p>Place from the tray. Tap again or drag off the board to remove.</p></div>
+  </div>
+  <div class="help-tools">
+    <div class="help-tool"><span class="help-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="2.6"/></svg></span><h3>Need a hint?</h3><p>Tap the coverage card.</p></div>
+    <div class="help-tool"><span class="help-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a8 8 0 0 1 14-2l2 3M20 3v6h-6M20 16A8 8 0 0 1 6 18l-2-3M4 21v-6h6"/></svg></span><h3>Try an example</h3><p>Click again for another.</p></div>
+  </div>
+  <p class="help-note">Changing the piece type clears the board.</p><div class="help-links"><a href="https://ihtfy.com/domination/" target="_blank" rel="noopener">About the puzzle</a><a href="https://github.com/IHTFY/chess-domination" target="_blank" rel="noopener">Source</a></div>
+</dialog>
+</body>
 </html>

@@ -17,21 +17,26 @@ test('solve, clear, mode, record persistence and reset work without errors', asy
     HTMLMediaElement.prototype.play = () => Promise.reject(new Error('Playback blocked'));
   });
   await ready(page);
-  await page.click('#queenBtn');
+  await page.getByRole('button', { name: 'Place queen', exact: true }).click();
+  await page.click('#exampleBtn');
   await expect.poll(() => page.evaluate(() => Object.keys(document.querySelector('#board').position).length)).toBe(8);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MAX.Q.pb)).toBe(8);
   await page.reload();
-  await expect.poll(() => page.locator('#queenBest').evaluate(el => el.style.getPropertyValue('--num'))).toBe('8');
-  await page.locator('label').filter({ has: page.locator('#modeSwitch') }).click();
-  await expect(page.locator('#modeSwitch')).toBeChecked();
-  await page.click('#queenBtn');
+  await page.click('#statsBtn');
+  await expect(page.locator('#queenBest')).toHaveText('8');
+  await page.keyboard.press('Escape');
+  await page.click('#dominationBtn');
+  await expect(page.locator('#dominationBtn')).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Place queen', exact: true }).click();
+  await page.click('#exampleBtn');
   await expect.poll(() => page.evaluate(() => Object.keys(document.querySelector('#board').position).length)).toBe(5);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MIN.Q.pb)).toBe(5);
   await page.click('#clearBtn');
   await expect.poll(() => page.evaluate(() => Object.keys(document.querySelector('#board').position).length)).toBe(0);
+  await page.click('#statsBtn');
   await page.click('#resetBtn');
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MIN.Q.pb)).toBe(64);
-  await expect.poll(() => page.locator('#queenBest').evaluate(el => el.style.getPropertyValue('--beeps-duration'))).toBe('0.2s');
+  await expect(page.locator('#statsPanel')).not.toHaveClass(/scores-resetting/);
   expect(errors).toEqual([]);
 });
 
@@ -53,7 +58,8 @@ test('corrupted storage and blocked storage still allow solving', async ({ brows
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await ready(page);
-    await page.click('#rookBtn');
+    await page.getByRole('button', { name: 'Place rook', exact: true }).click();
+    await page.click('#exampleBtn');
     await expect.poll(() => page.evaluate(() => Object.keys(document.querySelector('#board').position).length)).toBe(8);
     expect(errors).toEqual([]);
     await context.close();
@@ -128,7 +134,8 @@ test('offline reload serves the game and activation preserves unrelated caches',
   await context.setOffline(true);
   await page.reload();
   await page.waitForFunction(() => document.querySelector('#board')?.draggablePieces);
-  await page.click('#queenBtn');
+  await page.getByRole('button', { name: 'Place queen', exact: true }).click();
+  await page.click('#exampleBtn');
   await expect.poll(() => page.evaluate(() => Object.keys(document.querySelector('#board').position).length)).toBe(8);
   expect(await page.evaluate(async () => {
     const urls = ['scripts/storage.js', 'style/global.css', 'svg/wQ.svg', 'sounds/beeps.mp3', 'manifest.json'];
@@ -139,9 +146,10 @@ test('offline reload serves the game and activation preserves unrelated caches',
 test('mode switch remains clickable on a narrow screen', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await ready(page);
-  await page.locator('label').filter({ has: page.locator('#modeSwitch') }).click();
-  await expect(page.locator('#modeSwitch')).toBeChecked();
-  await page.click('#queenBtn');
+  await page.click('#dominationBtn');
+  await expect(page.locator('#dominationBtn')).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Place queen', exact: true }).click();
+  await page.click('#exampleBtn');
   await expect.poll(() => page.evaluate(() => Object.keys(document.querySelector('#board').position).length)).toBe(5);
 });
 
@@ -154,7 +162,8 @@ for (const [width, height] of viewports) {
   test(`layout fits ${width}x${height} without scrolling or overlap`, async ({ page }) => {
     await page.setViewportSize({ width, height });
     await ready(page);
-    await page.click('#queenBtn');
+    await page.getByRole('button', { name: 'Place queen', exact: true }).click();
+    await page.click('#exampleBtn');
     const layout = await page.evaluate(() => {
       const rect = (el, selector) => {
         const r = el.getBoundingClientRect();
@@ -162,15 +171,12 @@ for (const [width, height] of viewports) {
       };
       const content = ['#topbar', '#board', '#options', '#statsPanel']
         .map(selector => rect(document.querySelector(selector), selector)).filter(Boolean);
-      const controls = [...document.querySelectorAll('#topbar > *, #options .btn, #options .switch, #stats > div')]
+      const controls = [...document.querySelectorAll('#topbar > *, #options button'), ...document.querySelector('#board').shadowRoot.querySelectorAll('[id^="spare-w"]')]
         .map(el => rect(el, el.id || el.className)).filter(Boolean);
-      const statsCells = [...document.querySelectorAll('#stats > div')];
       return {
         scroll: [document.scrollingElement.scrollWidth, document.scrollingElement.scrollHeight],
         content,
         controls,
-        popup: getComputedStyle(document.querySelector('#statsBtn')).display !== 'none',
-        clipped: statsCells.filter(el => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1).length,
       };
     });
     expect(layout.scroll).toEqual([width, height]);
@@ -184,8 +190,7 @@ for (const [width, height] of viewports) {
       }
     }));
     expect(overlaps).toEqual([]);
-    expect(layout.content.map(r => r.selector)).toContain(layout.popup ? '#options' : '#statsPanel');
-    if (!layout.popup) expect(layout.clipped).toBe(0);
+    expect(layout.content.map(r => r.selector)).toContain('#options');
   });
 }
 
