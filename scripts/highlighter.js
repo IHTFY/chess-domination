@@ -1,28 +1,12 @@
 const highlightStyles = document.createElement('style');
 document.head.append(highlightStyles);
-const highlightWhite = '#ffa0a0';
-const highlightBlack = '#ff2b40';
 
-const clearHighlights = () => {
-  highlightStyles.textContent = '';
-};
+const clearHighlights = () => { highlightStyles.textContent = ''; };
 
-const highlightSquare = (square) => {
-  const highlightColor = (square.charCodeAt(0) % 2) ^ (square.charCodeAt(1) % 2)
-    ? highlightWhite
-    : highlightBlack;
-
-  highlightStyles.textContent += `chess-board::part(${square}) {
-  background-color: ${highlightColor};
-}`;
-};
-
-const highlight = (squares) => {
-  clearHighlights();
-  if (!squares.length) return;
-  for (let square of squares) {
-    highlightSquare(square);
-  }
+const highlight = (squares, mode = 'MAX') => {
+  highlightStyles.textContent = squares.map(square => mode === 'MIN'
+    ? `#board::part(${square})::after { content: ''; position: absolute; top: 43.5%; left: 43.5%; width: 13%; height: 13%; border-radius: 50%; background: #dab486; box-shadow: 0 0 0 4px #08121e20; pointer-events: none; }`
+    : `#board::part(${square}) { box-shadow: inset 0 0 0 3px #dba2a2; }`).join('\n');
 };
 
 export { clearHighlights, highlight };
