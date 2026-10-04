@@ -31,29 +31,27 @@ persistence, blocked audio/storage, offline reload with the HTTP cache disabled,
 no-scroll, no-overlap layouts across phone, tablet and desktop viewports.
 The cobalt interface also has checks for native mouse and touch dragging,
 keyboard placement, animated example generation, saved score differences,
-square instruction illustrations, and MP3 playback. External scripts are blocked
+square instruction illustrations, attack rays, integer count transitions, reduced motion,
+and MP3 playback. External scripts are blocked
 in tests. GitHub Actions runs these checks on PRs and master.
 
 ## Dependencies
 
 Runtime files remain committed so static hosting and offline play do not depend on
 `node_modules` or a CDN. Exact versions and their dependency trees are recorded in
-`package.json` and `package-lock.json`:
+`package.json` and `pnpm-lock.yaml`:
 
 | Package | Version | Committed files |
 | --- | --- | --- |
 | `chessboard-element` | 1.2.0 | `scripts/chessboard-element.bundled.js` from `bundled/` |
-| `@materializecss/materialize` | 1.1.0 | `style/materialize.min.css` and `.js` from `dist/css/` and `dist/js/` |
 
 `pnpm check:vendor` compares these files with the installed packages, allowing
 only historical line-ending and license-header whitespace differences. The Lit
 runtime is embedded in the chessboard bundle; updating a transitive npm dependency
 alone will not change that bundle.
 
-As checked on October 1, 2026, chessboard-element 1.2.0 is the latest stable release.
-Materialize [2.4.0 is available](https://github.com/materializecss/materialize/releases/tag/v2.4.0),
-but its major upgrade remains deferred. The cobalt interface uses local styles;
-Materialize still provides the service-worker update toast. The unused, unpinned `@pwabuilder/pwainstall` CDN import has been removed.
+Controls, dialogs, animations and update notifications use local CSS and vanilla JavaScript.
+The chessboard component provides piece rendering and drag interactions.
 
 To update a runtime dependency, install an exact version with `pnpm add --save-exact`,
 copy the corresponding published files into the locations above, run `pnpm sw:stamp`, and run `pnpm check`. Commit the lockfile and vendor files

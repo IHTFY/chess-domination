@@ -106,8 +106,8 @@ test('saved score differences appear inline, with exact and absent records neutr
     await expect(page.locator('#statsPanel thead th')).toHaveCount(4);
     await expect(page.locator('[data-score-piece="Q"] .score-difference')).toHaveText(difference);
     await expect(page.locator('[data-score-piece="Q"] .score-difference')).toHaveAttribute('aria-label', description);
-    await expect(page.locator('[data-score-piece="R"] .score-difference')).toHaveCount(0);
-    await expect(page.locator('[data-score-piece="N"] .score-difference')).toHaveCount(0);
+    await expect(page.locator('[data-score-piece="R"] .score-difference:not([hidden])')).toHaveCount(0);
+    await expect(page.locator('[data-score-piece="N"] .score-difference:not([hidden])')).toHaveCount(0);
     await page.keyboard.press('Escape');
   }
 });
@@ -157,4 +157,44 @@ test('placement and reset MP3s play, while muting prevents playback', async ({ p
   await page.locator('#resetBtn').click();
   await expect.poll(() => page.evaluate(() => window.playedSounds.some(src => src.endsWith('/beeps.mp3')))).toBe(true);
   await expect(page.locator('#statsPanel')).not.toHaveClass(/scores-resetting/);
+});
+
+test('quantities count through integers, handle interruption and respect reduced motion', async ({ page }) => {
+  await ready(page);
+  await page.locator('#dominationBtn').click();
+  await expect(page.locator('#coveredCount')).toHaveText('0');
+  await page.evaluate(() => {
+    window.quantityChanges = [];
+    new MutationObserver(() => window.quantityChanges.push(Number(document.querySelector('#coveredCount').textContent)))
+      .observe(document.querySelector('#coveredCount'), { childList: true });
+    document.querySelector('#board').setPosition({ d4: 'wQ' }, false);
+  });
+  await expect(page.locator('#coveredCount')).toHaveText('28');
+  expect(await page.evaluate(() => window.quantityChanges)).toEqual(Array.from({ length: 28 }, (_, i) => i + 1));
+  await page.locator('#clearBtn').click();
+  await page.locator('#nonAttackingBtn').click();
+  await expect(page.locator('#coveredCount')).toHaveText('0');
+  await expect(page.locator('#optimalCount')).toHaveText('8');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.evaluate(() => document.querySelector('#board').setPosition({ a1: 'wQ', b3: 'wQ' }, false));
+  await expect(page.locator('#pieceCount')).toHaveText('2');
+  await expect(page.locator('#coveredCount')).toHaveText('2');
+  await page.locator('#dominationBtn').click();
+  expect(await page.locator('#optimalCount').textContent()).toBe('5');
+  expect(await page.locator('.mode').evaluate(el => getComputedStyle(el, '::before').transitionDuration)).toBe('0s');
+});
+
+test('queen rays follow ranks, files and diagonals without hitting the other queen', async ({ page }) => {
+  await ready(page);
+  const lines = await page.locator('#safe-demo line').evaluateAll(elements => elements.map(el =>
+    ['x1', 'y1', 'x2', 'y2'].map(name => Number(el.getAttribute(name)))));
+  expect(lines.length).toBe(8);
+  for (const [x1, y1, x2, y2] of lines) {
+    const dx = x2 - x1, dy = y2 - y1;
+    expect(dx === 0 || dy === 0 || Math.abs(Math.abs(dx) - Math.abs(dy)) < 0.001).toBe(true);
+    for (const [x, y] of [[.5, 3.5], [2.5, .5]]) {
+      const t = ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy);
+      if (t > 0 && t < 1) expect(Math.hypot(x1 + t * dx - x, y1 + t * dy - y)).toBeGreaterThan(.3);
+    }
+  }
 });
