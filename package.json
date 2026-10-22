@@ -9,7 +9,7 @@
   "scripts": {
     "start": "python3 -m http.server 8000 --bind 127.0.0.1",
     "lint": "eslint .",
-    "test": "node --test tests/storage.test.js && playwright test",
+    "test": "node --test tests/storage.test.js tests/ads.test.js && playwright test",
     "check": "pnpm lint && pnpm check:vendor && pnpm check:sw && pnpm test",
     "check:vendor": "node tools/check-vendor.js",
     "sw:stamp": "node tools/stamp-sw.js",

@@ -1,6 +1,6 @@
 // Stamped by `pnpm sw:stamp` from the contents of every precached file, so any
 // change to the app changes this file byte-for-byte and browsers install an update.
-const VERSION = 'f5e5638fc836';
+const VERSION = '871333c38ed1';
 const CACHE_PREFIX = `chess-domination-${self.registration.scope}-`;
 const CACHE_NAME = `${CACHE_PREFIX}${VERSION}`;
 
@@ -8,6 +8,7 @@ const FILES_TO_CACHE = [
   './scripts/chessboard-element.bundled.js',
   './scripts/findIssues.js',
   './scripts/highlighter.js',
+  './scripts/ads.js',
   './scripts/main.js',
   './scripts/pwa.js',
   './scripts/solver.js',
@@ -102,6 +103,8 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
+  // The shared ad loader (ihtfy.com/ads/) can share this origin; it always goes to the network.
+  if (url.pathname.startsWith('/ads/')) return;
 
   if (event.request.mode === 'navigate' && url.href.startsWith(self.registration.scope)) {
     event.respondWith(handleNavigation(event));

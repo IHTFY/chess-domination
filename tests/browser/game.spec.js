@@ -207,3 +207,28 @@ test('scores open in a dismissible popup on short screens', async ({ page }) => 
   await page.click('#statsClose');
   await expect(page.locator('#statsPanel')).toBeHidden();
 });
+
+test('a solved board opens the ad dialog once per solve; examples and first load request no ad', async ({ page }) => {
+  const loads = [];
+  await page.route('https://ihtfy.com/ads/v1.js', route => {
+    loads.push(route.request().url());
+    route.fulfill({ contentType: 'text/javascript', body: 'window.ihtfyAds = { show: (box, key) => (window.__shown ??= []).push(key) };' });
+  });
+  await ready(page);
+  await page.waitForTimeout(600);
+  expect(loads).toEqual([]);
+  await page.click('#nonAttackingBtn');
+  await page.click('#exampleBtn');
+  await page.waitForTimeout(900);
+  expect(loads).toEqual([]);
+  await expect(page.locator('#solvedPanel')).not.toBeVisible();
+  await page.click('#clearBtn');
+  await page.locator('#board').evaluate(board => board.setPosition({ a1: 'wQ', b5: 'wQ', c8: 'wQ', d6: 'wQ', e3: 'wQ', f7: 'wQ', g2: 'wQ', h4: 'wQ' }, false));
+  await expect(page.locator('#solvedPanel')).toBeVisible();
+  await expect(page.locator('#solvedPanel .ad p')).toHaveText('Advertisements');
+  await expect(page.locator('#adBox')).toHaveAttribute('data-ad-slot', '6470163205');
+  await expect.poll(() => page.evaluate(() => window.__shown?.length)).toBe(1);
+  expect(loads).toHaveLength(1);
+  const gap = await page.evaluate(() => document.querySelector('#adBox').getBoundingClientRect().top - document.querySelector('#solvedPanel .close').getBoundingClientRect().bottom);
+  expect(gap).toBeGreaterThanOrEqual(150);
+});

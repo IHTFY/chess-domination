@@ -3,6 +3,7 @@ import { full, countPieces, isEmpty } from './utils.js';
 import { solve } from './solver.js';
 import { findIssues } from './findIssues.js';
 import { highlight } from './highlighter.js';
+import { AD_SLOT, showAd } from './ads.js';
 import { fenToObj, objToFen } from './chessboard-element.bundled.js';
 
 const $ = id => document.getElementById(id);
@@ -18,6 +19,9 @@ let focusedSquare = 'a1';
 let gesture = null;
 let dragging = false;
 let cancelDrop = false;
+let wasSolved = false;
+let exampleFen = null;
+let solves = 0;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const numberStates = new WeakMap();
 
@@ -192,8 +196,26 @@ function updateStats(pos) {
   else if (gameMode === 'MAX' && issues.length) $('hint').textContent = 'Some pieces are attacking. Tap a piece to remove it.';
   else $('hint').textContent = `Tap or drag to place a ${names[selected].toLowerCase()}. Tap again to remove it.`;
   highlight(hints ? issues : [], gameMode);
+  const solved = valid && count === target;
+  if (solved && !wasSolved && objToFen(pos) !== exampleFen) celebrate(count);
+  wasSolved = solved;
   renderScores(pos);
   queueMicrotask(() => board.updateComplete.then(decorateBoard));
+}
+
+// A board the player solved opens the dialog that carries the ad. Examples don't.
+function celebrate(count) {
+  const key = `${gameMode}-${selected}-${count}-${++solves}`;
+  setTimeout(() => {
+    if (!wasSolved || objToFen(latestPosition) === exampleFen || document.querySelector('dialog[open]')) return;
+    const name = names[selected].toLowerCase();
+    $('solved-text').textContent = gameMode === 'MIN'
+      ? `${count} ${name}s cover every square. That is the minimum.`
+      : `${count} ${name}s and none attack another. That is the maximum.`;
+    cancelDrag();
+    $('solvedPanel').showModal();
+    showAd($('adBox'), key);
+  }, 500);
 }
 
 board.addEventListener('change', event => {
@@ -288,6 +310,7 @@ $('exampleBtn').addEventListener('click', () => {
     next = typeof generated === 'string' ? fenToObj(generated) : generated;
     if (objToFen(next) !== board.fen()) break;
   }
+  exampleFen = objToFen(next);
   board.setPosition(next, !reducedMotion.matches);
   $('exampleBtn').disabled = true;
   setTimeout(() => { $('exampleBtn').disabled = false; }, reducedMotion.matches ? 0 : 240);
@@ -373,6 +396,7 @@ for (const [index, [x, y]] of [[0, 3], [2, 0]].entries()) {
   }
 }
 safeDemo.append(rays);
+$('adBox').dataset.adSlot = AD_SLOT;
 syncSound();
 updateStats(board.position);
 decorateBoard();

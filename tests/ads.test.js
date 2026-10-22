@@ -1,0 +1,65 @@
+import { test, beforeEach, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+
+let added;
+let online;
+let shown;
+let count = 0;
+
+// A fresh module, so each test starts without a loader request.
+const loadAds = () => import(`../scripts/ads.js?${count++}`);
+const tick = () => new Promise(resolve => setTimeout(resolve));
+
+beforeEach(() => {
+  added = [];
+  shown = [];
+  online = true;
+  // Record script tags instead of fetching them.
+  globalThis.document = {
+    createElement: () => {
+      const listeners = {};
+      return {
+        addEventListener: (name, fn) => { listeners[name] = fn; },
+        fire: name => listeners[name](),
+        remove() {},
+      };
+    },
+    head: { appendChild: el => added.push(el) },
+  };
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, get: () => ({ onLine: online }) });
+  globalThis.window = { ihtfyAds: { show: (box, key) => shown.push([box, key]) } };
+});
+
+afterEach(() => {
+  delete globalThis.document;
+  delete globalThis.window;
+  delete globalThis.navigator;
+});
+
+test('loads the shared loader once, then hands it each box', async () => {
+  const { showAd } = await loadAds();
+  showAd('box', 'a');
+  showAd('box', 'b');
+  assert.equal(added.length, 1);
+  assert.equal(added[0].src, 'https://ihtfy.com/ads/v1.js');
+  added[0].fire('load');
+  await tick();
+  assert.deepEqual(shown, [['box', 'a'], ['box', 'b']]);
+});
+
+test('loads nothing offline', async () => {
+  online = false;
+  const { showAd } = await loadAds();
+  showAd('box', 'a');
+  assert.equal(added.length, 0);
+});
+
+test('stays quiet when the loader fails, and tries again on the next game over', async () => {
+  const { showAd } = await loadAds();
+  showAd('box', 'a');
+  added[0].fire('error');
+  await tick();
+  assert.deepEqual(shown, []);
+  showAd('box', 'b');
+  assert.equal(added.length, 2);
+});
