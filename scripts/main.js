@@ -214,7 +214,10 @@ function celebrate(count) {
       : `${count} ${name}s and none attack another. That is the maximum.`;
     cancelDrag();
     $('solvedPanel').showModal();
-    showAd($('adBox'), key);
+    // The loader won't fill a box that already holds an ad, so each solve gets a new one.
+    const box = $('adBox').cloneNode(false);
+    $('adBox').replaceWith(box);
+    showAd(box, key);
   }, 500);
 }
 

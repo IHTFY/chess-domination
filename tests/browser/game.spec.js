@@ -231,4 +231,8 @@ test('a solved board opens the ad dialog once per solve; examples and first load
   expect(loads).toHaveLength(1);
   const gap = await page.evaluate(() => document.querySelector('#adBox').getBoundingClientRect().top - document.querySelector('#solvedPanel .close').getBoundingClientRect().bottom);
   expect(gap).toBeGreaterThanOrEqual(150);
+  await page.keyboard.press('Escape');
+  await page.click('#clearBtn');
+  await page.locator('#board').evaluate(board => board.setPosition({ a1: 'wQ', b5: 'wQ', c8: 'wQ', d6: 'wQ', e3: 'wQ', f7: 'wQ', g2: 'wQ', h4: 'wQ' }, false));
+  await expect.poll(() => page.evaluate(() => window.__shown?.length)).toBe(2);
 });
