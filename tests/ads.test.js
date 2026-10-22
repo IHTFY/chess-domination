@@ -114,3 +114,11 @@ test('loadForBuyer does nothing when storage and cookies cannot be read', async 
   loadForBuyer();
   assert.equal(added.length, 0);
 });
+
+test('loadForBuyer still finds the cookie when storage cannot be read', async () => {
+  globalThis.localStorage = { getItem: () => { throw new Error('blocked'); } };
+  document.cookie = 'ihtfy-ad-free=token';
+  const { loadForBuyer } = await loadAds();
+  loadForBuyer();
+  assert.equal(added.length, 1);
+});
