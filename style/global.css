@@ -1092,6 +1092,7 @@ header,.brand,.header-actions {
 @media(max-height:700px) {
   .help-links {
     margin-top:8px;
+    gap:14px;
     font-size:10px;
   }
 }
@@ -1228,5 +1229,38 @@ header,.brand,.header-actions {
   *, *::before, *::after {
     transition:none !important;
     animation:none !important;
+  }
+}
+
+.solved-dialog p {
+  margin:0;
+  font-size:15px;
+}
+
+.ad {
+  display:grid;
+  justify-items:center;
+  gap:6px;
+  padding-top:150px;
+}
+
+.ad p {
+  font-size:11px;
+}
+
+.ad a {
+  font-size:11px;
+  color:var(--accent);
+}
+
+.ad-box {
+  width:300px;
+  height:250px;
+  min-height:250px;
+}
+
+@media(max-width:360px) {
+  .solved-dialog {
+    padding:16px;
   }
 }

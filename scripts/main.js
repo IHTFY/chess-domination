@@ -5,6 +5,40 @@ import { findIssues } from './findIssues.js';
 import { highlight } from './highlighter.js';
 import { fenToObj, objToFen } from './chessboard-element.bundled.js';
 
+// ads:start
+// The ad in the solved dialog comes from the shared IHTFY loader, which
+// ihtfy.com serves for all the games (its source is in the IHTFY/com.ihtfy
+// repo). Nothing ad-related loads before the first solved board: the loader
+// arrives then, and AdSense after it at browser idle.
+const LOADER = 'https://ihtfy.com/ads/v1.js';
+
+// The shared 300×250 display unit for the games' result screens.
+const AD_SLOT = '6470163205';
+
+let loader = null;
+
+/** Fills `box` with an ad for the game over named `key`; offline or on failure it stays empty. */
+function showAd(box, key) {
+  if (!navigator.onLine) return;
+  loader ??= new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = LOADER;
+    script.addEventListener('load', resolve);
+    script.addEventListener('error', () => {
+      script.remove();
+      loader = null;
+      reject(new Error('The ad loader did not load'));
+    });
+    document.head.appendChild(script);
+  });
+  loader.then(
+    () => box.isConnected && window.ihtfyAds.show(box, key),
+    () => {},
+  );
+}
+// ads:end
+
 const $ = id => document.getElementById(id);
 const names = { K: 'King', Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight', P: 'Pawn' };
 const pieces = Object.keys(names);
@@ -18,6 +52,9 @@ let focusedSquare = 'a1';
 let gesture = null;
 let dragging = false;
 let cancelDrop = false;
+let wasSolved = false;
+let exampleFen = null;
+let solves = 0;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const numberStates = new WeakMap();
 
@@ -192,8 +229,29 @@ function updateStats(pos) {
   else if (gameMode === 'MAX' && issues.length) $('hint').textContent = 'Some pieces are attacking. Tap a piece to remove it.';
   else $('hint').textContent = `Tap or drag to place a ${names[selected].toLowerCase()}. Tap again to remove it.`;
   highlight(hints ? issues : [], gameMode);
+  const solved = valid && count === target;
+  if (solved && !wasSolved && objToFen(pos) !== exampleFen) celebrate(count);
+  wasSolved = solved;
   renderScores(pos);
   queueMicrotask(() => board.updateComplete.then(decorateBoard));
+}
+
+// A board the player solved opens the dialog that carries the ad. Examples don't.
+function celebrate(count) {
+  const key = `${gameMode}-${selected}-${count}-${++solves}`;
+  setTimeout(() => {
+    if (!wasSolved || objToFen(latestPosition) === exampleFen || document.querySelector('dialog[open]')) return;
+    const name = names[selected].toLowerCase();
+    $('solved-text').textContent = gameMode === 'MIN'
+      ? `${count} ${name}s cover every square. That is the minimum.`
+      : `${count} ${name}s and none attack another. That is the maximum.`;
+    cancelDrag();
+    $('solvedPanel').showModal();
+    // The loader won't fill a box that already holds an ad, so each solve gets a new one.
+    const box = $('adBox').cloneNode(false);
+    $('adBox').replaceWith(box);
+    showAd(box, key);
+  }, 500);
 }
 
 board.addEventListener('change', event => {
@@ -288,6 +346,7 @@ $('exampleBtn').addEventListener('click', () => {
     next = typeof generated === 'string' ? fenToObj(generated) : generated;
     if (objToFen(next) !== board.fen()) break;
   }
+  exampleFen = objToFen(next);
   board.setPosition(next, !reducedMotion.matches);
   $('exampleBtn').disabled = true;
   setTimeout(() => { $('exampleBtn').disabled = false; }, reducedMotion.matches ? 0 : 240);
@@ -373,6 +432,7 @@ for (const [index, [x, y]] of [[0, 3], [2, 0]].entries()) {
   }
 }
 safeDemo.append(rays);
+$('adBox').dataset.adSlot = AD_SLOT;
 syncSound();
 updateStats(board.position);
 decorateBoard();
