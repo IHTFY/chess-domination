@@ -106,3 +106,11 @@ test('loadForBuyer loads the loader at startup when only the cookie holds a toke
   loadForBuyer();
   assert.equal(added.length, 1);
 });
+
+test('loadForBuyer does nothing when storage and cookies cannot be read', async () => {
+  globalThis.localStorage = { getItem: () => { throw new Error('blocked'); } };
+  Object.defineProperty(document, 'cookie', { get: () => { throw new Error('blocked'); } });
+  const { loadForBuyer } = await loadAds();
+  loadForBuyer();
+  assert.equal(added.length, 0);
+});
