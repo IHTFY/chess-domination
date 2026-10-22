@@ -5,17 +5,19 @@ import { readFileSync } from 'node:fs';
 let added;
 let online;
 let shown;
+let stored;
 const box = { isConnected: true };
 
 // The ad code lives in main.js between markers; a fresh copy per test starts without a loader request.
 const adsSource = readFileSync(new URL('../scripts/main.js', import.meta.url), 'utf8')
   .match(/\/\/ ads:start\n([\s\S]*?)\/\/ ads:end/)[1];
-const loadAds = async () => new Function(`${adsSource}\nreturn { showAd };`)();
+const loadAds = async () => new Function(`${adsSource}\nreturn { showAd, loadForBuyer };`)();
 const tick = () => new Promise(resolve => setTimeout(resolve));
 
 beforeEach(() => {
   added = [];
   shown = [];
+  stored = new Map();
   online = true;
   // Record script tags instead of fetching them.
   globalThis.document = {
@@ -28,7 +30,9 @@ beforeEach(() => {
       };
     },
     head: { appendChild: el => added.push(el) },
+    cookie: '',
   };
+  globalThis.localStorage = { getItem: key => stored.get(key) ?? null };
   Object.defineProperty(globalThis, 'navigator', { configurable: true, get: () => ({ onLine: online }) });
   globalThis.window = { ihtfyAds: { show: (box, key) => shown.push([box, key]) } };
 });
@@ -36,6 +40,7 @@ beforeEach(() => {
 afterEach(() => {
   delete globalThis.document;
   delete globalThis.window;
+  delete globalThis.localStorage;
   delete globalThis.navigator;
 });
 
@@ -77,4 +82,27 @@ test('stays quiet when the loader fails, and tries again on the next game over',
   assert.deepEqual(shown, []);
   showAd(box, 'b');
   assert.equal(added.length, 2);
+});
+
+test('loadForBuyer loads nothing for a visitor without an ad-free token', async () => {
+  const { loadForBuyer } = await loadAds();
+  loadForBuyer();
+  assert.equal(added.length, 0);
+});
+
+test('loadForBuyer loads the loader at startup when localStorage holds a token', async () => {
+  stored.set('ihtfy-ad-free', 'token');
+  const { loadForBuyer, showAd } = await loadAds();
+  loadForBuyer();
+  assert.equal(added.length, 1);
+  assert.equal(added[0].src, 'https://ihtfy.com/ads/v1.js');
+  showAd(box, 'a');
+  assert.equal(added.length, 1);
+});
+
+test('loadForBuyer loads the loader at startup when only the cookie holds a token', async () => {
+  document.cookie = 'a=b; ihtfy-ad-free=token';
+  const { loadForBuyer } = await loadAds();
+  loadForBuyer();
+  assert.equal(added.length, 1);
 });
