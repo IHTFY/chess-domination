@@ -1,6 +1,6 @@
 // Stamped by `pnpm sw:stamp` from the contents of every precached file, so any
 // change to the app changes this file byte-for-byte and browsers install an update.
-const VERSION = '78e1df532fe2';
+const VERSION = '86439fafae97';
 const CACHE_PREFIX = `chess-domination-${self.registration.scope}-`;
 const CACHE_NAME = `${CACHE_PREFIX}${VERSION}`;
 
@@ -8,7 +8,6 @@ const FILES_TO_CACHE = [
   './scripts/chessboard-element.bundled.js',
   './scripts/findIssues.js',
   './scripts/highlighter.js',
-  './scripts/ads.js',
   './scripts/main.js',
   './scripts/pwa.js',
   './scripts/solver.js',

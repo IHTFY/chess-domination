@@ -1,14 +1,16 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 let added;
 let online;
 let shown;
-let count = 0;
 const box = { isConnected: true };
 
-// A fresh module, so each test starts without a loader request.
-const loadAds = () => import(`../scripts/ads.js?${count++}`);
+// The ad code lives in main.js between markers; a fresh copy per test starts without a loader request.
+const adsSource = readFileSync(new URL('../scripts/main.js', import.meta.url), 'utf8')
+  .match(/\/\/ ads:start\n([\s\S]*?)\/\/ ads:end/)[1];
+const loadAds = async () => new Function(`${adsSource}\nreturn { showAd };`)();
 const tick = () => new Promise(resolve => setTimeout(resolve));
 
 beforeEach(() => {
