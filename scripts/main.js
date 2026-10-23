@@ -19,9 +19,8 @@ const LOADER = 'https://ihtfy.com/ads/v1.js';
 // The shared 300×250 display unit for the games' result screens.
 const AD_SLOT = '6470163205';
 
-// The unit beside the board. It shares the results unit until a unit of its
-// own exists in AdSense.
-const PLAY_AD_SLOT = AD_SLOT;
+// The games-play unit: 300×600 in AdSense; the 160×600 box uses it too.
+const PLAY_AD_SLOT = '7239875855';
 
 // A new game replaces the ad beside the board only once it has shown this long.
 const PLAY_AD_MIN_MS = 60 * 1000;
