@@ -13,7 +13,7 @@ const box = { isConnected: true };
 // The ad code lives in main.js between markers; a fresh copy per test starts without a loader request.
 const adsSource = readFileSync(new URL('../scripts/main.js', import.meta.url), 'utf8')
   .match(/\/\/ ads:start\n([\s\S]*?)\/\/ ads:end/)[1];
-const loadAds = async () => new Function(`${adsSource}\nreturn { showAd, loadForBuyer, startPlayAd, newPlayAd };`)();
+const loadAds = async () => new Function(`${adsSource}\nreturn { showAd, loadForBuyer, startPlayAd, newPlayAd, setUpPlayAd };`)();
 const tick = () => new Promise(resolve => setTimeout(resolve));
 
 beforeEach(() => {
@@ -208,4 +208,43 @@ test('crossing into another ad size gets a new ad; resizing within one does not'
   await tick();
   assert.equal(shown.length, 2);
   assert.equal(shown[1][0].isConnected, false);
+});
+
+// The aside beside the board, after the app, holding a box.
+function rail() {
+  const app = { after(next) { app.next = next; } };
+  const aside = {
+    box: railBox(),
+    previousElementSibling: app,
+    app,
+    querySelector: () => aside.box,
+    remove() { aside.removed = true; },
+  };
+  return aside;
+}
+
+async function setUpForToken(valid) {
+  stored.set('ihtfy-ad-free', 'token');
+  window.ihtfyAds.adFree = async () => valid;
+  const { setUpPlayAd } = await loadAds();
+  const aside = rail();
+  setUpPlayAd(aside);
+  assert.equal(aside.removed, true);
+  added[0].fire('load');
+  await tick();
+  fire('pointerdown');
+  await tick();
+  return aside;
+}
+
+test('a buyer gets no box beside the board', async () => {
+  const aside = await setUpForToken(true);
+  assert.equal(aside.app.next, undefined);
+  assert.deepEqual(shown, []);
+});
+
+test('the box beside the board comes back when the token is not valid', async () => {
+  const aside = await setUpForToken(false);
+  assert.equal(aside.app.next, aside);
+  assert.deepEqual(shownKeys(), [['160x600', 'play/1']]);
 });

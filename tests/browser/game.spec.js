@@ -247,9 +247,13 @@ for (const [width, height, size] of railCases) {
     for (const buyer of [true, false]) {
       const context = await browser.newContext({ viewport: { width, height } });
       await context.route(/^https?:\/\/(?!127\.0\.0\.1:8765(?:\/|$))/, route => route.abort());
-      if (buyer) await context.addInitScript(() => localStorage.setItem('ihtfy-ad-free', 'token'));
+      if (buyer) {
+        await context.addInitScript(() => localStorage.setItem('ihtfy-ad-free', 'token'));
+        await context.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: 'window.ihtfyAds = { adFree: async () => true, show() {} };' }));
+      }
       const page = await context.newPage();
       await ready(page);
+      if (buyer) await page.waitForFunction(() => window.ihtfyAds);
       const layout = await page.evaluate(() => {
         const board = document.querySelector('#board').getBoundingClientRect();
         const box = document.querySelector('#playAdBox');
@@ -301,4 +305,17 @@ test('the ad beside the board loads only after the first tap, and dialogs stay 1
     expect(adLeft - right).toBeGreaterThanOrEqual(150);
     await page.keyboard.press('Escape');
   }
+});
+
+test('the ad beside the board comes back when the ad-free token is not valid, and the board keeps its size', async ({ page }) => {
+  await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: 'window.ihtfyAds = { adFree: async () => false, show: (box, key) => (window.__shown ??= []).push([box.dataset.adSize, key]) };' }));
+  await page.addInitScript(() => localStorage.setItem('ihtfy-ad-free', 'not-a-token'));
+  await page.setViewportSize({ width: 1366, height: 768 });
+  const boardWidth = () => page.locator('#board').evaluate(board => board.getBoundingClientRect().width);
+  await ready(page);
+  const before = await boardWidth();
+  await expect(page.locator('#playAdBox')).toHaveCSS('width', '160px');
+  expect(await boardWidth()).toBe(before);
+  await page.locator('[data-square="e4"]').click();
+  await expect.poll(() => page.evaluate(() => window.__shown)).toEqual([['160x600', 'play/1']]);
 });
