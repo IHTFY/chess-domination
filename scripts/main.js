@@ -6,16 +6,25 @@ import { highlight } from './highlighter.js';
 import { fenToObj, objToFen } from './chessboard-element.bundled.js';
 
 // ads:start
-// The ad in the solved dialog comes from the shared IHTFY loader, which
-// ihtfy.com serves for all the games (its source is in the IHTFY/com.ihtfy
-// repo). Nothing ad-related loads before the first solved board: the loader
-// arrives then, and AdSense after it at browser idle. A visitor who may have
-// bought ad-free gets the loader at startup instead (loadForBuyer), so it can
+// The ads in the solved dialog and beside the board come from the shared IHTFY
+// loader, which ihtfy.com serves for all the games (its source is in the
+// IHTFY/com.ihtfy repo). Nothing ad-related loads before the player's first
+// tap or key press: the loader arrives then if the window is wide enough for
+// the ad beside the board, otherwise at the first solved board, and AdSense
+// after it at browser idle. A visitor who may have bought ad-free gets no box
+// beside the board and the loader at startup instead (loadForBuyer), so it can
 // hide the ad box before the solved dialog shows.
 const LOADER = 'https://ihtfy.com/ads/v1.js';
 
 // The shared 300×250 display unit for the games' result screens.
 const AD_SLOT = '6470163205';
+
+// The unit beside the board. It shares the results unit until a unit of its
+// own exists in AdSense.
+const PLAY_AD_SLOT = AD_SLOT;
+
+// A new game replaces the ad beside the board only once it has shown this long.
+const PLAY_AD_MIN_MS = 60 * 1000;
 
 let loader = null;
 
@@ -33,8 +42,8 @@ const load = () =>
     document.head.appendChild(script);
   }));
 
-/** Loads the loader now if this browser holds an ad-free token; the loader checks it. */
-function loadForBuyer() {
+/** Whether this browser holds an ad-free token, unchecked; the loader checks it. */
+function mayBeAdFree() {
   let found = false;
   try {
     found = Boolean(localStorage.getItem('ihtfy-ad-free'));
@@ -46,7 +55,12 @@ function loadForBuyer() {
   } catch {
     // Cookies off too: there is no token to find.
   }
-  if (found) load().catch(() => {});
+  return found;
+}
+
+/** Loads the loader now if this browser holds an ad-free token. */
+function loadForBuyer() {
+  if (mayBeAdFree()) load().catch(() => {});
 }
 
 /** Fills `box` with an ad for the game over named `key`; offline or on failure it stays empty. */
@@ -57,7 +71,54 @@ function showAd(box, key) {
     () => {},
   );
 }
+
+// The player's first tap or key press.
+const firstInput = new Promise(resolve => {
+  for (const type of ['pointerdown', 'keydown']) addEventListener(type, resolve, { once: true, capture: true });
+});
+
+let playBox = null;
+let playSize = '';
+let playKeys = 0;
+let playRequestedAt = -Infinity;
+
+// The box's size as the stylesheet sets it, such as "160x600"; empty where the ad doesn't fit.
+const sizeOf = box => (box.offsetWidth ? `${box.offsetWidth}x${box.offsetHeight}` : '');
+
+// The loader won't fill a box twice, so each ad gets a new box. The old one
+// goes even when the new one is hidden, so no ad stays on the page out of view.
+function renewPlayAd() {
+  const box = playBox.cloneNode(false);
+  playBox.replaceWith(box);
+  playBox = box;
+  playSize = sizeOf(box);
+  if (!playSize) return;
+  box.dataset.adSize = playSize;
+  playRequestedAt = Date.now();
+  showAd(box, `play/${++playKeys}`);
+}
+
+/** Fills `box`, beside the board, after the first tap or key press, and again whenever the window crosses into another ad size. */
+function startPlayAd(box) {
+  box.dataset.adSlot = PLAY_AD_SLOT;
+  firstInput.then(() => {
+    playBox = box;
+    renewPlayAd();
+    addEventListener('resize', () => {
+      if (sizeOf(playBox) !== playSize) renewPlayAd();
+    });
+  });
+}
+
+/** A new game gets a new ad beside the board once the current one has shown for a minute. */
+function newPlayAd() {
+  if (playBox && Date.now() - playRequestedAt >= PLAY_AD_MIN_MS) renewPlayAd();
+}
 // ads:end
+
+// A buyer gets no box beside the board, so the game keeps the whole window.
+if (mayBeAdFree()) document.getElementById('playAd').remove();
+else startPlayAd(document.getElementById('playAdBox'));
 
 const $ = id => document.getElementById(id);
 const names = { K: 'King', Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight', P: 'Pawn' };
@@ -282,7 +343,10 @@ board.addEventListener('change', event => {
 function selectPiece(piece, clear = true) {
   if (selected === piece) return;
   selected = piece;
-  if (clear) board.clear(false);
+  if (clear) {
+    board.clear(false);
+    newPlayAd();
+  }
   updateStats(board.position);
 }
 
@@ -371,11 +435,11 @@ $('exampleBtn').addEventListener('click', () => {
   $('exampleBtn').disabled = true;
   setTimeout(() => { $('exampleBtn').disabled = false; }, reducedMotion.matches ? 0 : 240);
 });
-$('clearBtn').addEventListener('click', () => { cancelDrag(); board.clear(false); });
+$('clearBtn').addEventListener('click', () => { cancelDrag(); board.clear(false); newPlayAd(); });
 for (const [id, mode] of [['dominationBtn', 'MIN'], ['nonAttackingBtn', 'MAX']]) {
   $(id).addEventListener('click', () => {
     if (gameMode === mode) return;
-    cancelDrag(); gameMode = mode; updateStats(board.position);
+    cancelDrag(); gameMode = mode; updateStats(board.position); newPlayAd();
     if (!reducedMotion.matches) for (const el of [$('goal-label'), $('coverage-label'), $('hint'), $('boardPanel')]) {
       el.getAnimations().forEach(animation => animation.cancel());
       el.animate([{ opacity: .45 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' });

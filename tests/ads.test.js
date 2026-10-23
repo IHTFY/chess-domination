@@ -1,4 +1,4 @@
-import { test, beforeEach, afterEach } from 'node:test';
+import { test, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
@@ -6,12 +6,14 @@ let added;
 let online;
 let shown;
 let stored;
+let listeners;
+let railSize;
 const box = { isConnected: true };
 
 // The ad code lives in main.js between markers; a fresh copy per test starts without a loader request.
 const adsSource = readFileSync(new URL('../scripts/main.js', import.meta.url), 'utf8')
   .match(/\/\/ ads:start\n([\s\S]*?)\/\/ ads:end/)[1];
-const loadAds = async () => new Function(`${adsSource}\nreturn { showAd, loadForBuyer };`)();
+const loadAds = async () => new Function(`${adsSource}\nreturn { showAd, loadForBuyer, startPlayAd, newPlayAd };`)();
 const tick = () => new Promise(resolve => setTimeout(resolve));
 
 beforeEach(() => {
@@ -19,6 +21,9 @@ beforeEach(() => {
   shown = [];
   stored = new Map();
   online = true;
+  listeners = {};
+  railSize = [160, 600];
+  globalThis.addEventListener = (type, fn) => (listeners[type] ??= []).push(fn);
   // Record script tags instead of fetching them.
   globalThis.document = {
     createElement: () => {
@@ -38,6 +43,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  mock.restoreAll();
+  delete globalThis.addEventListener;
   delete globalThis.document;
   delete globalThis.window;
   delete globalThis.localStorage;
@@ -121,4 +128,84 @@ test('loadForBuyer still finds the cookie when storage cannot be read', async ()
   const { loadForBuyer } = await loadAds();
   loadForBuyer();
   assert.equal(added.length, 1);
+});
+
+// A box beside the board, as wide and tall as the stylesheet makes it in the current window.
+function railBox() {
+  const rail = {
+    isConnected: true,
+    dataset: {},
+    get offsetWidth() { return railSize[0]; },
+    get offsetHeight() { return railSize[1]; },
+    cloneNode: () => Object.assign(railBox(), { dataset: { ...rail.dataset } }),
+    replaceWith(next) { rail.isConnected = false; rail.next = next; },
+  };
+  return rail;
+}
+const fire = type => listeners[type]?.forEach(fn => fn());
+const shownKeys = () => shown.map(([shownBox, key]) => [shownBox.dataset.adSize, key]);
+
+test('the ad beside the board waits for the first tap or key press', async () => {
+  const { startPlayAd } = await loadAds();
+  const rail = railBox();
+  startPlayAd(rail);
+  await tick();
+  assert.equal(added.length, 0);
+  fire('pointerdown');
+  await tick();
+  assert.equal(added.length, 1);
+  added[0].fire('load');
+  await tick();
+  assert.deepEqual(shownKeys(), [['160x600', 'play/1']]);
+  assert.equal(shown[0][0], rail.next);
+  assert.equal(rail.next.dataset.adSlot, '6470163205');
+});
+
+test('a window too small for the ad beside the board loads nothing', async () => {
+  railSize = [0, 0];
+  const { startPlayAd } = await loadAds();
+  startPlayAd(railBox());
+  fire('keydown');
+  await tick();
+  assert.equal(added.length, 0);
+});
+
+test('a new game replaces the ad beside the board only after a minute', async () => {
+  let now = 1_000_000;
+  mock.method(Date, 'now', () => now);
+  const { startPlayAd, newPlayAd } = await loadAds();
+  const rail = railBox();
+  startPlayAd(rail);
+  fire('pointerdown');
+  await tick();
+  added[0].fire('load');
+  await tick();
+  now += 59_000;
+  newPlayAd();
+  await tick();
+  assert.deepEqual(shownKeys(), [['160x600', 'play/1']]);
+  now += 1_000;
+  newPlayAd();
+  await tick();
+  assert.deepEqual(shownKeys(), [['160x600', 'play/1'], ['160x600', 'play/2']]);
+  assert.notEqual(shown[1][0], shown[0][0]);
+});
+
+test('crossing into another ad size gets a new ad; resizing within one does not', async () => {
+  const { startPlayAd } = await loadAds();
+  startPlayAd(railBox());
+  fire('pointerdown');
+  await tick();
+  added[0].fire('load');
+  await tick();
+  fire('resize');
+  railSize = [300, 600];
+  fire('resize');
+  await tick();
+  assert.deepEqual(shownKeys(), [['160x600', 'play/1'], ['300x600', 'play/2']]);
+  railSize = [0, 0];
+  fire('resize');
+  await tick();
+  assert.equal(shown.length, 2);
+  assert.equal(shown[1][0].isConnected, false);
 });

@@ -236,3 +236,69 @@ test('a solved board opens the ad dialog once per solve; examples and first load
   await page.locator('#board').evaluate(board => board.setPosition({ a1: 'wQ', b5: 'wQ', c8: 'wQ', d6: 'wQ', e3: 'wQ', f7: 'wQ', g2: 'wQ', h4: 'wQ' }, false));
   await expect.poll(() => page.evaluate(() => window.__shown?.length)).toBe(2);
 });
+
+const railCases = [
+  [390, 844, ''], [1280, 800, ''], [1440, 900, ''], [1440, 850, '160x600'], [1440, 851, ''],
+  [1366, 768, '160x600'], [1536, 864, '160x600'], [1920, 1080, '300x600'], [2560, 1080, '300x600'],
+];
+for (const [width, height, size] of railCases) {
+  test(`at ${width}x${height} the ad beside the board is ${size || 'absent'} and the board keeps its size`, async ({ browser }) => {
+    const boards = [];
+    for (const buyer of [true, false]) {
+      const context = await browser.newContext({ viewport: { width, height } });
+      await context.route(/^https?:\/\/(?!127\.0\.0\.1:8765(?:\/|$))/, route => route.abort());
+      if (buyer) await context.addInitScript(() => localStorage.setItem('ihtfy-ad-free', 'token'));
+      const page = await context.newPage();
+      await ready(page);
+      const layout = await page.evaluate(() => {
+        const board = document.querySelector('#board').getBoundingClientRect();
+        const box = document.querySelector('#playAdBox');
+        if (!box?.offsetWidth) return { board: [board.width, board.height], size: '' };
+        const ad = box.getBoundingClientRect();
+        const controls = [...document.querySelectorAll('#app button, #app a, #board'), ...document.querySelector('#board').shadowRoot.querySelectorAll('[id^="spare-w"]')];
+        const gap = Math.min(...controls.map(el => {
+          const r = el.getBoundingClientRect();
+          return Math.hypot(Math.max(0, r.left - ad.right, ad.left - r.right), Math.max(0, r.top - ad.bottom, ad.top - r.bottom));
+        }));
+        return { board: [board.width, board.height], size: `${ad.width}x${ad.height}`, gap, inside: ad.right <= innerWidth && ad.bottom <= innerHeight && ad.top >= 0 };
+      });
+      layout.scroll = await page.evaluate(() => [document.scrollingElement.scrollWidth, document.scrollingElement.scrollHeight]);
+      expect(layout.scroll).toEqual([width, height]);
+      if (buyer) {
+        expect(await page.locator('#playAd').count()).toBe(0);
+      } else {
+        expect(layout.size).toBe(size);
+        if (size) {
+          expect(layout.gap).toBeGreaterThanOrEqual(150);
+          expect(layout.inside).toBe(true);
+          await expect(page.locator('#playAd p')).toHaveText('Advertisements');
+          await expect(page.locator('#playAd a')).toHaveAttribute('href', 'https://ihtfy.com/privacy');
+        }
+      }
+      boards.push(layout.board);
+      await context.close();
+    }
+    expect(boards[1]).toEqual(boards[0]);
+  });
+}
+
+test('the ad beside the board loads only after the first tap, and dialogs stay 150px clear of it', async ({ page }) => {
+  const loads = [];
+  await page.route('https://ihtfy.com/ads/v1.js', route => {
+    loads.push(route.request().url());
+    route.fulfill({ contentType: 'text/javascript', body: 'window.ihtfyAds = { show: (box, key) => (window.__shown ??= []).push([box.dataset.adSize, key]) };' });
+  });
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await ready(page);
+  await page.waitForTimeout(600);
+  expect(loads).toEqual([]);
+  await page.locator('[data-square="e4"]').click();
+  await expect.poll(() => page.evaluate(() => window.__shown)).toEqual([['160x600', 'play/1']]);
+  const adLeft = await page.locator('#playAdBox').evaluate(box => box.getBoundingClientRect().left);
+  for (const [button, dialog] of [['#statsBtn', '#statsPanel'], ['#aboutBtn', '#instructions']]) {
+    await page.click(button);
+    const right = await page.locator(dialog).evaluate(el => Math.max(el.getBoundingClientRect().right, innerWidth - parseFloat(getComputedStyle(el, '::backdrop').right)));
+    expect(adLeft - right).toBeGreaterThanOrEqual(150);
+    await page.keyboard.press('Escape');
+  }
+});

@@ -62,6 +62,11 @@
 <div class="actions"><button class="action" id="clearBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></svg>Clear</button><button class="action primary" id="exampleBtn">Show example</button></div>
 <p class="hint" id="hint" role="status">Tap a square to place a queen. Tap again to remove it.</p>
 </section></main></div>
+<!-- Beside the game on wide screens only, 150px from its controls (style/global.css). -->
+<aside class="play-ad" id="playAd">
+  <div class="play-ad-row"><p>Advertisements</p><a href="https://ihtfy.com/privacy" target="_blank" rel="noopener">Privacy</a></div>
+  <div class="play-ad-box" id="playAdBox"></div>
+</aside>
 <dialog class="dialog scores-dialog" id="statsPanel" aria-labelledby="scores-title">
   <div class="dialog-head"><h2 id="scores-title">Scores</h2><div class="scores-actions"><button id="statsClose" class="icon-button close" aria-label="Close scores" data-close>✕</button></div></div>
   <div class="stats-legend"><span class="legend-mark" aria-hidden="true"></span>Pieces from optimal</div>
