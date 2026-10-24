@@ -72,10 +72,23 @@
 <div><div class="selection-label label"><span>Place a piece</span><span id="selected-name">Queen</span></div><div class="pieces" id="pieceTray" role="group" aria-label="Piece to place"></div></div>
 <div class="actions"><button class="action" id="clearBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></svg>Clear</button><button class="action primary" id="exampleBtn">Show example</button></div>
 <p class="hint" id="hint" role="status">Tap a square to place a queen. Tap again to remove it.</p>
-</section></main></div>
+</section></main>
+  <!-- Results are a screen of their own, not a dialog: the ad box never sits in a pop-up or under a backdrop. -->
+  <section class="results" id="solvedPanel" aria-labelledby="solved-title" hidden>
+    <h2 id="solved-title">Solved</h2>
+    <p id="solved-text"></p>
+    <!-- At least 50px of space around the box; it keeps its size whether or not an ad fills it. -->
+    <aside class="ad">
+      <p>Advertisements</p>
+      <div class="ad-box" id="adBox"></div>
+      <a href="https://ihtfy.com/privacy/" target="_blank" rel="noopener">Privacy</a>
+    </aside>
+    <div class="results-actions"><button class="action primary" id="playAgainBtn">Play again</button><button class="action" id="backBtn">Back to board</button></div>
+  </section>
+</div>
 <!-- Beside the game on wide screens only, 150px from its controls (style/global.css). -->
 <aside class="play-ad" id="playAd">
-  <div class="play-ad-row"><p>Advertisements</p><a href="https://ihtfy.com/privacy" target="_blank" rel="noopener">Privacy</a></div>
+  <div class="play-ad-row"><p>Advertisements</p><a href="https://ihtfy.com/privacy/" target="_blank" rel="noopener">Privacy</a></div>
   <div class="play-ad-box" id="playAdBox"></div>
 </aside>
 <dialog class="dialog scores-dialog" id="statsPanel" aria-labelledby="scores-title">
@@ -104,17 +117,7 @@
     <div class="help-tool"><span class="help-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="2.6"/></svg></span><h3>Need a hint?</h3><p>Tap the coverage card.</p></div>
     <div class="help-tool"><span class="help-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a8 8 0 0 1 14-2l2 3M20 3v6h-6M20 16A8 8 0 0 1 6 18l-2-3M4 21v-6h6"/></svg></span><h3>Try an example</h3><p>Click again for another.</p></div>
   </div>
-  <p class="help-note">Changing the piece type clears the board.</p><div class="help-links"><a href="https://ihtfy.com/domination/" target="_blank" rel="noopener">About the puzzle</a><a href="https://github.com/IHTFY/chess-domination" target="_blank" rel="noopener">Source</a><a href="https://ihtfy.com/support/" target="_blank" rel="noopener">Support ♥</a><a href="https://ihtfy.com/privacy" target="_blank" rel="noopener">Privacy</a></div>
-</dialog>
-<dialog class="dialog solved-dialog" id="solvedPanel" aria-labelledby="solved-title">
-  <div class="dialog-head"><h2 id="solved-title">Solved</h2><button class="icon-button close" aria-label="Close" data-close>✕</button></div>
-  <p id="solved-text"></p>
-  <!-- At least 150px below the close button; the box keeps its size whether or not an ad fills it. -->
-  <aside class="ad">
-    <p>Advertisements</p>
-    <div class="ad-box" id="adBox"></div>
-    <a href="https://ihtfy.com/privacy" target="_blank" rel="noopener">Privacy</a>
-  </aside>
+  <p class="help-note">Changing the piece type clears the board.</p><div class="help-links"><a href="https://ihtfy.com/domination/" target="_blank" rel="noopener">About the puzzle</a><a href="https://github.com/IHTFY/chess-domination" target="_blank" rel="noopener">Source</a><a href="https://ihtfy.com/support/" target="_blank" rel="noopener">Support ♥</a><a href="https://ihtfy.com/privacy/" target="_blank" rel="noopener">Privacy</a></div>
 </dialog>
 </body>
 </html>
