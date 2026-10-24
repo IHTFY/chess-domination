@@ -35,6 +35,8 @@ beforeEach(() => {
       };
     },
     head: { appendChild: el => added.push(el) },
+    // The page's head script sets this class for a browser that may hold a token.
+    documentElement: { classList: Object.assign(new Set(['ad-free']), { remove(name) { this.delete(name); } }) },
     cookie: '',
   };
   globalThis.localStorage = { getItem: key => stored.get(key) ?? null };
@@ -210,16 +212,9 @@ test('crossing into another ad size gets a new ad; resizing within one does not'
   assert.equal(shown[1][0].isConnected, false);
 });
 
-// The aside beside the board, after the app, holding a box.
+// The aside beside the board, holding a box.
 function rail() {
-  const app = { after(next) { app.next = next; } };
-  const aside = {
-    box: railBox(),
-    previousElementSibling: app,
-    app,
-    querySelector: () => aside.box,
-    remove() { aside.removed = true; },
-  };
+  const aside = { box: railBox(), querySelector: () => aside.box };
   return aside;
 }
 
@@ -227,24 +222,21 @@ async function setUpForToken(valid) {
   stored.set('ihtfy-ad-free', 'token');
   window.ihtfyAds.adFree = async () => valid;
   const { setUpPlayAd } = await loadAds();
-  const aside = rail();
-  setUpPlayAd(aside);
-  assert.equal(aside.removed, true);
+  setUpPlayAd(rail());
   added[0].fire('load');
   await tick();
   fire('pointerdown');
   await tick();
-  return aside;
 }
 
 test('a buyer gets no box beside the board', async () => {
-  const aside = await setUpForToken(true);
-  assert.equal(aside.app.next, undefined);
+  await setUpForToken(true);
+  assert.equal(document.documentElement.classList.has('ad-free'), true);
   assert.deepEqual(shown, []);
 });
 
 test('the box beside the board comes back when the token is not valid', async () => {
-  const aside = await setUpForToken(false);
-  assert.equal(aside.app.next, aside);
+  await setUpForToken(false);
+  assert.equal(document.documentElement.classList.has('ad-free'), false);
   assert.deepEqual(shownKeys(), [['160x600', 'play/1']]);
 });

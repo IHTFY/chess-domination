@@ -1297,15 +1297,18 @@ header,.brand,.header-actions {
     width:160px;
     height:600px;
   }
+  :root.ad-free .play-ad {
+    display:none;
+  }
   /* Two lines from the start, so the box stays put when the loader adds
      "Remove ads" beside the Privacy link. */
   .play-ad-row {
     flex-direction:column;
   }
-  body:has(> .play-ad) .dialog,body:has(> .play-ad) .dialog::backdrop {
+  :root:not(.ad-free) body:has(> .play-ad) .dialog,:root:not(.ad-free) body:has(> .play-ad) .dialog::backdrop {
     right:328px;
   }
-  body:has(> .play-ad) .toast {
+  :root:not(.ad-free) body:has(> .play-ad) .toast {
     left:calc((100% - 328px) / 2);
     max-width:calc(100% - 352px);
   }
@@ -1318,10 +1321,10 @@ header,.brand,.header-actions {
   .play-ad-row {
     flex-direction:row;
   }
-  body:has(> .play-ad) .dialog,body:has(> .play-ad) .dialog::backdrop {
+  :root:not(.ad-free) body:has(> .play-ad) .dialog,:root:not(.ad-free) body:has(> .play-ad) .dialog::backdrop {
     right:468px;
   }
-  body:has(> .play-ad) .toast {
+  :root:not(.ad-free) body:has(> .play-ad) .toast {
     left:calc((100% - 468px) / 2);
     max-width:calc(100% - 492px);
   }
