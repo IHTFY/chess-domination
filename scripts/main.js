@@ -6,14 +6,17 @@ import { highlight } from './highlighter.js';
 import { fenToObj, objToFen } from './chessboard-element.bundled.js';
 
 // ads:start
-// The ads in the solved dialog and beside the board come from the shared IHTFY
+// The ads on the results screen and beside the board come from the shared IHTFY
 // loader, which ihtfy.com serves for all the games (its source is in the
 // IHTFY/com.ihtfy repo). Nothing ad-related loads before the player's first
 // tap or key press: the loader arrives then if the window is wide enough for
 // the ad beside the board, otherwise at the first solved board, and AdSense
 // after it at browser idle. A visitor who may have bought ad-free gets no box
-// beside the board and the loader at startup instead (loadForBuyer), so it can
-// hide the ad box before the solved dialog shows.
+// and the loader at startup instead (loadForBuyer), so it can hide the ad box
+// before the results screen shows.
+//
+// On a phone the results screen is the only screen with an ad. The play screen
+// never has one, and the scores and instructions are dialogs, which never do.
 const LOADER = 'https://ihtfy.com/ads/v1.js';
 
 // The shared 300×250 display unit for the games' result screens.
@@ -62,13 +65,51 @@ function loadForBuyer() {
   if (mayBeAdFree()) load().catch(() => {});
 }
 
-/** Fills `box` with an ad for the game over named `key`; offline or on failure it stays empty. */
+/** Fills `box` with an ad for the game over named `key`; offline or on failure it stays empty. Resolves to whether the loader was asked to place it. */
 function showAd(box, key) {
-  if (!navigator.onLine) return;
-  load().then(
-    () => box.isConnected && window.ihtfyAds.show(box, key),
-    () => {},
+  if (!navigator.onLine) return Promise.resolve(false);
+  return load().then(
+    () => {
+      if (!box.isConnected) return false;
+      window.ihtfyAds.show(box, key);
+      return true;
+    },
+    () => false,
   );
+}
+
+// The screen that carries an ad on a phone.
+const AD_SCREEN = 'results';
+
+// The loader won't fill a box twice, so each ad gets a new, empty box.
+function freshBox(box) {
+  const next = box.cloneNode(false);
+  box.replaceWith(next);
+  return next;
+}
+
+/**
+ * Puts a new box on the screen named `name` (whose element is `screen`, already
+ * showing, so the stylesheet has sized the box) and fills it for the game over
+ * named `key`. Any other screen gets nothing, and so does a visitor who may have
+ * bought ad-free.
+ */
+function showScreenAd(name, screen, key) {
+  if (name !== AD_SCREEN || document.documentElement.classList.contains('ad-free')) return;
+  const box = freshBox(screen.querySelector('.ad-box'));
+  box.removeAttribute('style'); // The last ad's size, kept for its own screen visit.
+  const size = sizeOf(box);
+  if (!size) return;
+  box.dataset.adSize = size;
+  // The loader's unit keeps this size, so the box does too if the window turns before the screen closes.
+  const [width, height] = size.split('x');
+  Object.assign(box.style, { width: `${width}px`, height: `${height}px`, minHeight: `${height}px` });
+  showAd(box, key);
+}
+
+/** Swaps the box on a screen that is going away for an empty one, so no ad stays on the page out of view. */
+function clearScreenAd(screen) {
+  freshBox(screen.querySelector('.ad-box'));
 }
 
 // The player's first tap or key press.
@@ -79,7 +120,8 @@ const firstInput = new Promise(resolve => {
 let playBox = null;
 let playSize = '';
 let playKeys = 0;
-let playRequestedAt = -Infinity;
+// When the ad beside the board was placed; Infinity while its request is pending.
+let playPlacedAt = -Infinity;
 
 // The box's size as the stylesheet sets it, such as "160x600"; empty where the ad doesn't fit.
 const sizeOf = box => (box.offsetWidth ? `${box.offsetWidth}x${box.offsetHeight}` : '');
@@ -93,8 +135,12 @@ function renewPlayAd() {
   playSize = sizeOf(box);
   if (!playSize) return;
   box.dataset.adSize = playSize;
-  playRequestedAt = Date.now();
-  showAd(box, `play/${++playKeys}`);
+  playPlacedAt = Infinity;
+  // The minute starts once the loader has been asked to place the ad; a failed
+  // request frees the next game to try again.
+  showAd(box, `play/${++playKeys}`).then(placed => {
+    if (box === playBox) playPlacedAt = placed ? Date.now() : -Infinity;
+  });
 }
 
 /** Fills `box`, beside the board, after the first tap or key press, and again whenever the window crosses into another ad size. */
@@ -111,7 +157,7 @@ function startPlayAd(box) {
 
 /** A new game gets a new ad beside the board once the current one has shown for a minute. */
 function newPlayAd() {
-  if (playBox && Date.now() - playRequestedAt >= PLAY_AD_MIN_MS) renewPlayAd();
+  if (playBox && Date.now() - playPlacedAt >= PLAY_AD_MIN_MS) renewPlayAd();
 }
 
 /**
@@ -338,7 +384,7 @@ function updateStats(pos) {
   queueMicrotask(() => board.updateComplete.then(decorateBoard));
 }
 
-// A board the player solved opens the dialog that carries the ad. Examples don't.
+// A board the player solved opens the results screen that carries the ad. Examples don't.
 function celebrate(count) {
   const key = `${gameMode}-${selected}-${count}-${++solves}`;
   setTimeout(() => {
@@ -348,12 +394,31 @@ function celebrate(count) {
       ? `${count} ${name}s cover every square. That is the minimum.`
       : `${count} ${name}s and none attack another. That is the maximum.`;
     cancelDrag();
-    $('solvedPanel').showModal();
-    // The loader won't fill a box that already holds an ad, so each solve gets a new one.
-    const box = $('adBox').cloneNode(false);
-    $('adBox').replaceWith(box);
-    showAd(box, key);
+    openResults(key);
   }, 500);
+}
+
+const results = $('solvedPanel');
+let focusBeforeResults = null;
+
+// The results replace the board and its controls, so the ad has no pop-up or backdrop around it
+// and nothing to cover it. The header buttons and the update toast are out of sight meanwhile.
+function openResults(key) {
+  focusBeforeResults = board.shadowRoot?.activeElement ?? document.activeElement;
+  document.querySelector('.layout').hidden = true;
+  results.hidden = false;
+  $('app').classList.add('on-results');
+  showScreenAd(AD_SCREEN, results, key);
+  $('playAgainBtn').focus();
+}
+
+function closeResults() {
+  if (results.hidden) return;
+  clearScreenAd(results);
+  results.hidden = true;
+  document.querySelector('.layout').hidden = false;
+  $('app').classList.remove('on-results');
+  focusBeforeResults?.focus();
 }
 
 board.addEventListener('change', event => {
@@ -456,7 +521,11 @@ $('exampleBtn').addEventListener('click', () => {
   $('exampleBtn').disabled = true;
   setTimeout(() => { $('exampleBtn').disabled = false; }, reducedMotion.matches ? 0 : 240);
 });
-$('clearBtn').addEventListener('click', () => { cancelDrag(); board.clear(false); newPlayAd(); });
+const clearBoard = () => { cancelDrag(); board.clear(false); newPlayAd(); };
+$('clearBtn').addEventListener('click', clearBoard);
+$('playAgainBtn').addEventListener('click', () => { closeResults(); clearBoard(); });
+$('backBtn').addEventListener('click', closeResults);
+addEventListener('keydown', event => { if (event.key === 'Escape') closeResults(); });
 for (const [id, mode] of [['dominationBtn', 'MIN'], ['nonAttackingBtn', 'MAX']]) {
   $(id).addEventListener('click', () => {
     if (gameMode === mode) return;

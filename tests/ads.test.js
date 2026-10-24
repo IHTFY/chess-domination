@@ -13,7 +13,7 @@ const box = { isConnected: true };
 // The ad code lives in main.js between markers; a fresh copy per test starts without a loader request.
 const adsSource = readFileSync(new URL('../scripts/main.js', import.meta.url), 'utf8')
   .match(/\/\/ ads:start\n([\s\S]*?)\/\/ ads:end/)[1];
-const loadAds = async () => new Function(`${adsSource}\nreturn { showAd, loadForBuyer, startPlayAd, newPlayAd, setUpPlayAd };`)();
+const loadAds = async () => new Function(`${adsSource}\nreturn { showAd, loadForBuyer, startPlayAd, newPlayAd, setUpPlayAd, showScreenAd, clearScreenAd };`)();
 const tick = () => new Promise(resolve => setTimeout(resolve));
 
 beforeEach(() => {
@@ -37,6 +37,7 @@ beforeEach(() => {
     head: { appendChild: el => added.push(el) },
     // The page's head script sets this class for a browser that may hold a token.
     documentElement: { classList: Object.assign(new Set(['ad-free']), {
+      contains(name) { return this.has(name); },
       remove(name) { this.delete(name); },
       toggle(name, force) { if (force) this.add(name); else this.delete(name); },
     }) },
@@ -140,6 +141,8 @@ function railBox() {
   const rail = {
     isConnected: true,
     dataset: {},
+    style: {},
+    removeAttribute(name) { if (name === 'style') rail.style = {}; },
     get offsetWidth() { return railSize[0]; },
     get offsetHeight() { return railSize[1]; },
     cloneNode: () => Object.assign(railBox(), { dataset: { ...rail.dataset } }),
@@ -213,6 +216,154 @@ test('crossing into another ad size gets a new ad; resizing within one does not'
   await tick();
   assert.equal(shown.length, 2);
   assert.equal(shown[1][0].isConnected, false);
+});
+
+test('the minute for the ad beside the board starts when it is placed, not when the loader is asked', async () => {
+  let now = 1_000_000;
+  mock.method(Date, 'now', () => now);
+  const { startPlayAd, newPlayAd } = await loadAds();
+  startPlayAd(railBox());
+  fire('pointerdown');
+  await tick();
+  // A slow connection: the loader arrives a minute and a half after the request.
+  now += 90_000;
+  added[0].fire('load');
+  await tick();
+  assert.deepEqual(shownKeys(), [['160x600', 'play/1']]);
+  now += 30_000;
+  newPlayAd();
+  await tick();
+  assert.equal(shown.length, 1);
+  now += 30_000;
+  newPlayAd();
+  await tick();
+  assert.deepEqual(shownKeys(), [['160x600', 'play/1'], ['160x600', 'play/2']]);
+});
+
+test('a new game keeps waiting while the ad beside the board is still being placed', async () => {
+  let now = 1_000_000;
+  mock.method(Date, 'now', () => now);
+  const { startPlayAd, newPlayAd } = await loadAds();
+  startPlayAd(railBox());
+  fire('pointerdown');
+  await tick();
+  now += 120_000;
+  newPlayAd();
+  await tick();
+  assert.equal(added.length, 1);
+  added[0].fire('load');
+  await tick();
+  assert.deepEqual(shownKeys(), [['160x600', 'play/1']]);
+});
+
+test('a failed request lets the next game ask again at once', async () => {
+  const { startPlayAd, newPlayAd } = await loadAds();
+  startPlayAd(railBox());
+  fire('pointerdown');
+  await tick();
+  added[0].fire('error');
+  await tick();
+  newPlayAd();
+  await tick();
+  assert.equal(added.length, 2);
+  added[1].fire('load');
+  await tick();
+  assert.deepEqual(shownKeys(), [['160x600', 'play/2']]);
+});
+
+// A screen holding one `.ad-box`, sized by the stylesheet as `railSize` says.
+function screen() {
+  const element = { box: railBox() };
+  element.querySelector = selector => selector === '.ad-box' ? element.box : null;
+  const { cloneNode } = element.box;
+  const track = box => {
+    box.cloneNode = (...args) => track(cloneNode.apply(box, args));
+    box.replaceWith = next => { box.isConnected = false; element.box = next; };
+    return box;
+  };
+  track(element.box);
+  return element;
+}
+
+test('the results screen gets a new, sized box for each game over', async () => {
+  document.documentElement.classList.delete('ad-free');
+  railSize = [300, 250];
+  const { showScreenAd } = await loadAds();
+  const results = screen();
+  const first = results.box;
+  showScreenAd('results', results, 'a');
+  assert.notEqual(results.box, first);
+  assert.equal(first.isConnected, false);
+  assert.equal(results.box.dataset.adSize, '300x250');
+  assert.deepEqual(results.box.style, { width: '300px', height: '250px', minHeight: '250px' });
+  added[0].fire('load');
+  await tick();
+  assert.deepEqual(shown, [[results.box, 'a']]);
+  const second = results.box;
+  showScreenAd('results', results, 'b');
+  assert.notEqual(results.box, second);
+  await tick();
+  assert.deepEqual(shown.map(([, key]) => key), ['a', 'b']);
+});
+
+test('the shorter sizes are asked for as the stylesheet sets them', async () => {
+  document.documentElement.classList.delete('ad-free');
+  const { showScreenAd } = await loadAds();
+  for (const size of [[320, 100], [320, 50]]) {
+    railSize = size;
+    const results = screen();
+    showScreenAd('results', results, size.join('x'));
+    assert.equal(results.box.dataset.adSize, size.join('x'));
+  }
+});
+
+test('the play screen and the dialogs never get a box', async () => {
+  document.documentElement.classList.delete('ad-free');
+  railSize = [300, 250];
+  const { showScreenAd } = await loadAds();
+  for (const name of ['play', 'scores', 'instructions', 'home']) {
+    const other = screen();
+    const box = other.box;
+    showScreenAd(name, other, name);
+    assert.equal(other.box, box, name);
+  }
+  assert.equal(added.length, 0);
+  assert.deepEqual(shown, []);
+});
+
+test('a visitor who may have bought ad-free never gets a box on the results screen', async () => {
+  railSize = [300, 250];
+  assert.equal(document.documentElement.classList.has('ad-free'), true);
+  const { showScreenAd } = await loadAds();
+  const results = screen();
+  const box = results.box;
+  showScreenAd('results', results, 'a');
+  assert.equal(results.box, box);
+  assert.equal(added.length, 0);
+  assert.deepEqual(shown, []);
+});
+
+test('a results screen without room for its box asks for no ad', async () => {
+  document.documentElement.classList.delete('ad-free');
+  railSize = [0, 0];
+  const { showScreenAd } = await loadAds();
+  showScreenAd('results', screen(), 'a');
+  assert.equal(added.length, 0);
+});
+
+test('leaving the results screen swaps its box for an empty one', async () => {
+  document.documentElement.classList.delete('ad-free');
+  railSize = [300, 250];
+  const { showScreenAd, clearScreenAd } = await loadAds();
+  const results = screen();
+  showScreenAd('results', results, 'a');
+  const filled = results.box;
+  clearScreenAd(results);
+  assert.notEqual(results.box, filled);
+  assert.equal(filled.isConnected, false);
+  added[0].fire('load');
+  await tick();
+  assert.deepEqual(shown, []);
 });
 
 // The aside beside the board, holding a box.

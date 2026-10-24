@@ -208,7 +208,9 @@ test('scores open in a dismissible popup on short screens', async ({ page }) => 
   await expect(page.locator('#statsPanel')).toBeHidden();
 });
 
-test('a solved board opens the ad dialog once per solve; examples and first load request no ad', async ({ page }) => {
+const eightQueens = { a1: 'wQ', b5: 'wQ', c8: 'wQ', d6: 'wQ', e3: 'wQ', f7: 'wQ', g2: 'wQ', h4: 'wQ' };
+
+test('a solved board opens the results screen once per solve; examples and first load request no ad', async ({ page }) => {
   const loads = [];
   await page.route('https://ihtfy.com/ads/v1.js', route => {
     loads.push(route.request().url());
@@ -221,20 +223,117 @@ test('a solved board opens the ad dialog once per solve; examples and first load
   await page.click('#exampleBtn');
   await page.waitForTimeout(900);
   expect(loads).toEqual([]);
-  await expect(page.locator('#solvedPanel')).not.toBeVisible();
+  await expect(page.locator('#solvedPanel')).toBeHidden();
   await page.click('#clearBtn');
-  await page.locator('#board').evaluate(board => board.setPosition({ a1: 'wQ', b5: 'wQ', c8: 'wQ', d6: 'wQ', e3: 'wQ', f7: 'wQ', g2: 'wQ', h4: 'wQ' }, false));
+  await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
   await expect(page.locator('#solvedPanel')).toBeVisible();
+  expect(await page.evaluate(() => document.querySelector('#solvedPanel').closest('dialog'))).toBeNull();
   await expect(page.locator('#solvedPanel .ad p')).toHaveText('Advertisements');
+  await expect(page.locator('#solvedPanel .ad a')).toHaveAttribute('href', 'https://ihtfy.com/privacy/');
   await expect(page.locator('#adBox')).toHaveAttribute('data-ad-slot', '6470163205');
   await expect.poll(() => page.evaluate(() => window.__shown?.length)).toBe(1);
   expect(loads).toHaveLength(1);
-  const gap = await page.evaluate(() => document.querySelector('#adBox').getBoundingClientRect().top - document.querySelector('#solvedPanel .close').getBoundingClientRect().bottom);
-  expect(gap).toBeGreaterThanOrEqual(150);
+  await expect(page.locator('#playAgainBtn')).toBeFocused();
+  await expect(page.locator('.header-actions')).toHaveCSS('visibility', 'hidden');
   await page.keyboard.press('Escape');
+  await expect(page.locator('#solvedPanel')).toBeHidden();
+  await expect(page.locator('#adBox')).toBeEmpty();
+  expect(await page.locator('#board').evaluate(board => board.position)).toEqual(eightQueens);
   await page.click('#clearBtn');
-  await page.locator('#board').evaluate(board => board.setPosition({ a1: 'wQ', b5: 'wQ', c8: 'wQ', d6: 'wQ', e3: 'wQ', f7: 'wQ', g2: 'wQ', h4: 'wQ' }, false));
+  await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
   await expect.poll(() => page.evaluate(() => window.__shown?.length)).toBe(2);
+  await page.click('#playAgainBtn');
+  await expect(page.locator('#solvedPanel')).toBeHidden();
+  expect(await page.locator('#board').evaluate(board => board.position)).toEqual({});
+});
+
+// Each box as the loader fills it: a fixed-size unit of the size asked for.
+const fillingLoader = 'window.ihtfyAds = { show(box) { const [w, h] = box.dataset.adSize.split("x"); const ad = document.createElement("ins"); ad.style.cssText = `display:inline-block;width:${w}px;height:${h}px`; box.append(ad); (window.__shown ??= []).push(box.dataset.adSize); } };';
+const resultsCases = [[360, 640], [390, 750], [412, 800], [1280, 800], [375, 560], [360, 400]];
+for (const [width, height] of resultsCases) {
+  test(`at ${width}x${height} the results ad is in view, clear of every control, and does not shift the screen`, async ({ page }) => {
+    await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: fillingLoader }));
+    await page.setViewportSize({ width, height });
+    await page.goto('/?adtest=on');
+    await page.waitForFunction(() => document.querySelector('#board')?.sparePieces);
+    await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
+    await expect(page.locator('#solvedPanel')).toBeVisible();
+    const measure = () => page.evaluate(() => {
+      const rect = el => { const { left, top, right, bottom } = el.getBoundingClientRect(); return { left, top, right, bottom }; };
+      const box = rect(document.querySelector('#adBox'));
+      const controls = [...document.querySelectorAll('#app button, #app a')].filter(el => getComputedStyle(el).visibility !== 'hidden' && el.offsetParent);
+      const gaps = controls.map(el => {
+        const r = el.getBoundingClientRect();
+        return Math.hypot(Math.max(0, r.left - box.right, box.left - r.right), Math.max(0, r.top - box.bottom, box.top - r.bottom));
+      });
+      const main = rect(document.querySelector('#playAgainBtn'));
+      const text = rect(document.querySelector('#solved-title'));
+      return { box, main, text, gaps, controls: controls.length, size: document.querySelector('#adBox').dataset.adSize, inView: [box, main, text].every(r => r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight), scroll: [document.scrollingElement.scrollWidth, document.scrollingElement.scrollHeight] };
+    });
+    const before = await measure();
+    await expect.poll(() => page.evaluate(() => window.__shown)).toEqual([before.size]);
+    const after = await measure();
+    expect(after).toEqual(before);
+    expect(before.size).toBe(height >= 576 ? '300x250' : height >= 425 ? '320x100' : '320x50');
+    expect(before.inView).toBe(true);
+    expect(before.scroll).toEqual([width, height]);
+    expect(before.controls).toBeGreaterThanOrEqual(3);
+    for (const gap of before.gaps) expect(gap).toBeGreaterThanOrEqual(50);
+  });
+}
+
+test('turning the phone while the results show keeps the box at the size of its ad', async ({ page }) => {
+  await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: fillingLoader }));
+  await page.setViewportSize({ width: 390, height: 750 });
+  await ready(page);
+  await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
+  await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['300x250']);
+  const size = () => page.locator('#adBox').evaluate(box => [box.offsetWidth, box.offsetHeight]);
+  expect(await size()).toEqual([300, 250]);
+  await page.setViewportSize({ width: 750, height: 390 });
+  expect(await size()).toEqual([300, 250]);
+  const gap = await page.evaluate(() => {
+    const box = document.querySelector('#adBox').getBoundingClientRect();
+    return document.querySelector('#solvedPanel .ad a').getBoundingClientRect().top - box.bottom;
+  });
+  expect(gap).toBeGreaterThanOrEqual(50);
+  // The next visit sizes its box from the window again, not from the last ad.
+  await page.click('#backBtn');
+  await page.setViewportSize({ width: 390, height: 500 });
+  await page.click('#clearBtn');
+  await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
+  await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['300x250', '320x100']);
+  expect(await size()).toEqual([320, 100]);
+});
+
+test('the results ad is one box that a new solve replaces, and the play screen and dialogs have none', async ({ page }) => {
+  await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: fillingLoader }));
+  await page.setViewportSize({ width: 390, height: 750 });
+  await ready(page);
+  await page.click('#statsBtn');
+  await page.keyboard.press('Escape');
+  await page.click('#aboutBtn');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-ad-slot]:visible')).toHaveCount(0);
+  await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
+  await expect(page.locator('#solvedPanel')).toBeVisible();
+  await expect(page.locator('[data-ad-slot]:visible')).toHaveCount(1);
+  await expect(page.locator('dialog [data-ad-slot]')).toHaveCount(0);
+  await page.click('#backBtn');
+  await expect(page.locator('#adBox')).toBeEmpty();
+  await expect(page.locator('[data-ad-slot]:visible')).toHaveCount(0);
+});
+
+test('a buyer gets no results ad box and no space for one', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ihtfy-ad-free', 'token'));
+  await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: `window.ihtfyAds = { adFree: async () => true, show() { window.__asked = true; } };` }));
+  await page.setViewportSize({ width: 390, height: 750 });
+  await ready(page);
+  await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
+  await expect(page.locator('#solvedPanel')).toBeVisible();
+  await expect(page.locator('#solvedPanel .ad')).toBeHidden();
+  expect(await page.locator('#adBox').evaluate(box => box.offsetHeight)).toBe(0);
+  expect(await page.evaluate(() => window.__asked)).toBeUndefined();
 });
 
 const railCases = [
@@ -276,7 +375,7 @@ for (const [width, height, size] of railCases) {
           expect(layout.gap).toBeGreaterThanOrEqual(150);
           expect(layout.inside).toBe(true);
           await expect(page.locator('#playAd p')).toHaveText('Advertisements');
-          await expect(page.locator('#playAd a')).toHaveAttribute('href', 'https://ihtfy.com/privacy');
+          await expect(page.locator('#playAd a')).toHaveAttribute('href', 'https://ihtfy.com/privacy/');
         }
       }
       boards.push(layout.board);
