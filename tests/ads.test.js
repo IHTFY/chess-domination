@@ -36,7 +36,10 @@ beforeEach(() => {
     },
     head: { appendChild: el => added.push(el) },
     // The page's head script sets this class for a browser that may hold a token.
-    documentElement: { classList: Object.assign(new Set(['ad-free']), { remove(name) { this.delete(name); } }) },
+    documentElement: { classList: Object.assign(new Set(['ad-free']), {
+      remove(name) { this.delete(name); },
+      toggle(name, force) { if (force) this.add(name); else this.delete(name); },
+    }) },
     cookie: '',
   };
   globalThis.localStorage = { getItem: key => stored.get(key) ?? null };
@@ -239,4 +242,13 @@ test('the box beside the board comes back when the token is not valid', async ()
   await setUpForToken(false);
   assert.equal(document.documentElement.classList.has('ad-free'), false);
   assert.deepEqual(shownKeys(), [['160x600', 'play/1']]);
+});
+
+test('the head script\'s class follows the token as main.js finds it', async () => {
+  const { setUpPlayAd } = await loadAds();
+  setUpPlayAd(rail());
+  assert.equal(document.documentElement.classList.has('ad-free'), false);
+  stored.set('ihtfy-ad-free', 'token');
+  setUpPlayAd(rail());
+  assert.equal(document.documentElement.classList.has('ad-free'), true);
 });
