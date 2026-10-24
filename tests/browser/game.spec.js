@@ -269,7 +269,7 @@ for (const [width, height, size] of railCases) {
       layout.scroll = await page.evaluate(() => [document.scrollingElement.scrollWidth, document.scrollingElement.scrollHeight]);
       expect(layout.scroll).toEqual([width, height]);
       if (buyer) {
-        expect(await page.locator('#playAd').count()).toBe(0);
+        await expect(page.locator('#playAd')).toBeHidden();
       } else {
         expect(layout.size).toBe(size);
         if (size) {
@@ -285,6 +285,36 @@ for (const [width, height, size] of railCases) {
     expect(boards[1]).toEqual(boards[0]);
   });
 }
+
+test('a buyer never sees the ad rail or a board shift while the page script is slow', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.addInitScript(() => {
+    localStorage.setItem('ihtfy-ad-free', 'token');
+    // One sample per frame until the delayed script has run.
+    window.__samples = [];
+    const sample = () => {
+      const rail = document.querySelector('#playAd');
+      const app = document.querySelector('.app');
+      if (rail && app) {
+        const { left, width } = app.getBoundingClientRect();
+        window.__samples.push({ rail: getComputedStyle(rail).display, left, width });
+      }
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  await page.route('**/scripts/main.js', async route => {
+    const response = await route.fetch();
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    await route.fulfill({ response });
+  });
+  await ready(page);
+  await page.waitForTimeout(300);
+  const samples = await page.evaluate(() => window.__samples);
+  expect(samples.length).toBeGreaterThan(30);
+  expect(samples.filter(frame => frame.rail !== 'none')).toEqual([]);
+  expect(new Set(samples.map(frame => `${frame.left},${frame.width}`)).size).toBe(1);
+});
 
 test('the ad beside the board loads only after the first tap, and dialogs stay 150px clear of it', async ({ page }) => {
   const loads = [];
