@@ -97,9 +97,13 @@ function freshBox(box) {
 function showScreenAd(name, screen, key) {
   if (name !== AD_SCREEN || document.documentElement.classList.contains('ad-free')) return;
   const box = freshBox(screen.querySelector('.ad-box'));
+  box.removeAttribute('style'); // The last ad's size, kept for its own screen visit.
   const size = sizeOf(box);
   if (!size) return;
   box.dataset.adSize = size;
+  // The loader's unit keeps this size, so the box does too if the window turns before the screen closes.
+  const [width, height] = size.split('x');
+  Object.assign(box.style, { width: `${width}px`, height: `${height}px`, minHeight: `${height}px` });
   showAd(box, key);
 }
 
@@ -400,7 +404,7 @@ let focusBeforeResults = null;
 // The results replace the board and its controls, so the ad has no pop-up or backdrop around it
 // and nothing to cover it. The header buttons and the update toast are out of sight meanwhile.
 function openResults(key) {
-  focusBeforeResults = document.activeElement;
+  focusBeforeResults = board.shadowRoot?.activeElement ?? document.activeElement;
   document.querySelector('.layout').hidden = true;
   results.hidden = false;
   $('app').classList.add('on-results');

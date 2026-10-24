@@ -141,6 +141,8 @@ function railBox() {
   const rail = {
     isConnected: true,
     dataset: {},
+    style: {},
+    removeAttribute(name) { if (name === 'style') rail.style = {}; },
     get offsetWidth() { return railSize[0]; },
     get offsetHeight() { return railSize[1]; },
     cloneNode: () => Object.assign(railBox(), { dataset: { ...rail.dataset } }),
@@ -293,6 +295,7 @@ test('the results screen gets a new, sized box for each game over', async () => 
   assert.notEqual(results.box, first);
   assert.equal(first.isConnected, false);
   assert.equal(results.box.dataset.adSize, '300x250');
+  assert.deepEqual(results.box.style, { width: '300px', height: '250px', minHeight: '250px' });
   added[0].fire('load');
   await tick();
   assert.deepEqual(shown, [[results.box, 'a']]);

@@ -282,6 +282,30 @@ for (const [width, height] of resultsCases) {
   });
 }
 
+test('turning the phone while the results show keeps the box at the size of its ad', async ({ page }) => {
+  await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: fillingLoader }));
+  await page.setViewportSize({ width: 390, height: 750 });
+  await ready(page);
+  await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
+  await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['300x250']);
+  const size = () => page.locator('#adBox').evaluate(box => [box.offsetWidth, box.offsetHeight]);
+  expect(await size()).toEqual([300, 250]);
+  await page.setViewportSize({ width: 750, height: 390 });
+  expect(await size()).toEqual([300, 250]);
+  const gap = await page.evaluate(() => {
+    const box = document.querySelector('#adBox').getBoundingClientRect();
+    return document.querySelector('#solvedPanel .ad a').getBoundingClientRect().top - box.bottom;
+  });
+  expect(gap).toBeGreaterThanOrEqual(50);
+  // The next visit sizes its box from the window again, not from the last ad.
+  await page.click('#backBtn');
+  await page.setViewportSize({ width: 390, height: 500 });
+  await page.click('#clearBtn');
+  await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
+  await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['300x250', '320x100']);
+  expect(await size()).toEqual([320, 100]);
+});
+
 test('the results ad is one box that a new solve replaces, and the play screen and dialogs have none', async ({ page }) => {
   await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: fillingLoader }));
   await page.setViewportSize({ width: 390, height: 750 });
