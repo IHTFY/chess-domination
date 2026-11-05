@@ -1051,7 +1051,7 @@ header,.brand,.header-actions {
   transform:translateX(-50%);
   width:max-content;
   max-width:calc(100% - 24px);
-  padding:12px 16px;
+  padding:10px 16px;
   display:flex;
   align-items:center;
   gap:16px;
@@ -1094,6 +1094,25 @@ header,.brand,.header-actions {
     margin-top:8px;
     gap:14px;
     font-size:10px;
+  }
+}
+
+@media(max-width:420px) {
+  .help-links {
+    flex-wrap:wrap;
+    gap:4px 12px;
+  }
+  .help-links a {
+    white-space:nowrap;
+  }
+  .help-dialog {
+    padding:10px 16px;
+  }
+  .help-tool {
+    padding:8px 10px;
+  }
+  .help-dialog .help-note {
+    margin-top:6px;
   }
 }
 
