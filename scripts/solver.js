@@ -217,7 +217,10 @@ const solvePawn = mode => {
       // TODO add perturbations
     ]);
   } else {
-    return '8/PPPPPPPP/8/PPPPPPPP/8/PPPPPPPP/8/PPPPPPPP';
+    return pickRandom([
+      '8/PPPP2PP/3P2P1/PP1P2P1/3P2P1/PP1P2P1/3P2P1/PPPPPPPP',
+      '8/PP2PPPP/1P2P3/1P2P1PP/1P2P3/1P2P1PP/1P2P3/PPPPPPPP',
+    ]);
   }
 };
 

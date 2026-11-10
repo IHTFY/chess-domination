@@ -72,7 +72,7 @@ test('all solvers produce optimal valid positions with deterministic randomness'
     const { solve } = await import('/scripts/solver.js');
     const { findIssues } = await import('/scripts/findIssues.js');
     const { fenToObj } = await import('/scripts/chessboard-element.bundled.js');
-    const expected = { MAX: [16, 8, 8, 14, 32, 32], MIN: [9, 5, 8, 8, 12, 32] };
+    const expected = { MAX: [16, 8, 8, 14, 32, 32], MIN: [9, 5, 8, 8, 12, 28] };
     const pieces = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn'];
     const failures = [];
     const original = Math.random;

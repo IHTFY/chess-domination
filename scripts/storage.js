@@ -13,7 +13,7 @@ export const defaultScores = {
     'R': { 'pb': 64, 'wr': 8 },
     'B': { 'pb': 64, 'wr': 8 },
     'N': { 'pb': 64, 'wr': 12 },
-    'P': { 'pb': 64, 'wr': 32 },
+    'P': { 'pb': 64, 'wr': 28 },
   },
 };
 
