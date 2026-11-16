@@ -77,3 +77,17 @@ export const mergeScores = (a, b) => {
   }
   return merged;
 };
+
+// Saves and resets must hold the same lock across the storage read and write.
+export const withScoresLock = change => {
+  if (!navigator.locks) return change();
+  let started = false;
+  return navigator.locks.request('chess-domination-scores', () => {
+    started = true;
+    return change();
+  }).catch(error => {
+    if (started) throw error;
+    // A rejected lock request must not prevent saving.
+    return change();
+  });
+};
