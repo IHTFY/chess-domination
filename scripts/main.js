@@ -351,6 +351,8 @@ function updateStats(pos) {
   const count = Object.keys(pos).length;
   const target = scores[gameMode][selected].wr;
   scores = mergeScores(scores, readScores());
+  // The example stays the example only until the board differs from it, so a cleared or edited board is the player's.
+  if (objToFen(pos) !== exampleFen) exampleFen = null;
   // An example is shown, not solved, so it never records a best.
   if (valid && !isEmpty(pos) && objToFen(pos) !== exampleFen) {
     const piece = types[0];

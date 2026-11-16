@@ -479,6 +479,29 @@ test('an example position never records a personal best', async ({ page }) => {
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('scores')))).toEqual(await page.evaluate(async () => (await import('/scripts/storage.js')).defaultScores));
 });
 
+test('rebuilding an example by hand after clearing the board records the best', async ({ page }) => {
+  await ready(page);
+  await page.getByRole('button', { name: 'Place queen', exact: true }).click();
+  await page.click('#exampleBtn');
+  await expect.poll(() => page.evaluate(() => Object.keys(document.querySelector('#board').position).length)).toBe(8);
+  const squares = await page.evaluate(() => Object.keys(document.querySelector('#board').position));
+  await page.click('#clearBtn');
+  await expect.poll(() => page.evaluate(() => Object.keys(document.querySelector('#board').position).length)).toBe(0);
+  await placeQueens(page, squares);
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MAX.Q.pb)).toBe(8);
+});
+
+test('touching an example makes it the player\'s board', async ({ page }) => {
+  await ready(page);
+  await page.getByRole('button', { name: 'Place queen', exact: true }).click();
+  await page.click('#exampleBtn');
+  await expect.poll(() => page.evaluate(() => Object.keys(document.querySelector('#board').position).length)).toBe(8);
+  const [first] = await page.evaluate(() => Object.keys(document.querySelector('#board').position));
+  await page.getByRole('button', { name: `${first[0]} ${first[1]}, Queen`, exact: true }).click();
+  await placeQueens(page, [first]);
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MAX.Q.pb)).toBe(8);
+});
+
 test('reset asks first, and keeping the scores changes nothing', async ({ page }) => {
   await ready(page);
   await page.getByRole('button', { name: 'Place queen', exact: true }).click();
