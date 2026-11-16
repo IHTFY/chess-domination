@@ -1,4 +1,4 @@
-import { defaultScores, readBoolean, readMode, readScores, writeStored } from './storage.js';
+import { defaultScores, mergeScores, readBoolean, readMode, readScores, writeStored } from './storage.js';
 import { full, countPieces, isEmpty } from './utils.js';
 import { solve } from './solver.js';
 import { findIssues } from './findIssues.js';
@@ -350,7 +350,11 @@ function updateStats(pos) {
   const valid = types.length === 1 && issues.length === 0;
   const count = Object.keys(pos).length;
   const target = scores[gameMode][selected].wr;
-  if (valid && !isEmpty(pos)) {
+  scores = mergeScores(scores, readScores());
+  // The example stays the example only until the board differs from it, so a cleared or edited board is the player's.
+  if (objToFen(pos) !== exampleFen) exampleFen = null;
+  // An example is shown, not solved, so it never records a best.
+  if (valid && !isEmpty(pos) && objToFen(pos) !== exampleFen) {
     const piece = types[0];
     scores[gameMode][piece].pb = Math[gameMode.toLowerCase()](scores[gameMode][piece].pb, counts[piece]);
   }
@@ -566,7 +570,10 @@ for (const dialog of document.querySelectorAll('dialog')) dialog.addEventListene
 let resetTimer;
 function finishResetSound() { clearTimeout(resetTimer); $('statsPanel').classList.remove('scores-resetting'); }
 beeps.addEventListener('ended', finishResetSound);
-$('resetBtn').addEventListener('click', () => {
+$('resetBtn').addEventListener('click', () => $('resetConfirm').showModal());
+$('cancelReset').addEventListener('click', () => $('resetConfirm').close());
+$('confirmReset').addEventListener('click', () => {
+  $('resetConfirm').close();
   scores = structuredClone(defaultScores);
   writeStored('scores', JSON.stringify(scores));
   renderScores(board.position);
@@ -575,6 +582,12 @@ $('resetBtn').addEventListener('click', () => {
     resetTimer = setTimeout(finishResetSound, 2500);
     playSound(beeps, finishResetSound);
   }
+});
+// Another tab saved or reset the scores: show them here, so a stale copy doesn't bring old records back.
+addEventListener('storage', event => {
+  if (event.key !== 'scores' && event.key !== null) return;
+  scores = readScores();
+  renderScores(board.position);
 });
 for (const [id, occupied] of [['coverage-demo', [[1, 2]]], ['safe-demo', [[0, 3], [2, 0]]]]) {
   for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {

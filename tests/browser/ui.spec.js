@@ -44,6 +44,8 @@ test('phone taps and native touch drags work, with cancellation restoring the so
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   await context.route(/^https?:\/\/(?!127\.0\.0\.1:8765(?:\/|$))/, route => route.abort());
   const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
   await ready(page);
   const client = await context.newCDPSession(page);
   async function touchDrag(source, target, cancel = false) {
@@ -66,6 +68,10 @@ test('phone taps and native touch drags work, with cancellation restoring the so
   expect(await position(page)).toEqual({});
   await touchDrag(page.getByRole('button', { name: 'Place queen', exact: true }), page.getByRole('button', { name: 'e 4, empty', exact: true }));
   expect(await position(page)).toEqual({ e4: 'wQ' });
+  await touchDrag(page.getByRole('button', { name: 'e 4, Queen', exact: true }), page.locator('#topbar'));
+  expect(await position(page)).toEqual({});
+  await page.waitForTimeout(500);
+  expect(errors).toEqual([]);
   await context.close();
 });
 
@@ -155,6 +161,7 @@ test('placement and reset MP3s play, while muting prevents playback', async ({ p
   await expect.poll(() => page.evaluate(() => window.playedSounds.length)).toBe(2);
   await page.locator('#statsBtn').click();
   await page.locator('#resetBtn').click();
+  await page.locator('#confirmReset').click();
   await expect.poll(() => page.evaluate(() => window.playedSounds.some(src => src.endsWith('/beeps.mp3')))).toBe(true);
   await expect(page.locator('#statsPanel')).not.toHaveClass(/scores-resetting/);
 });

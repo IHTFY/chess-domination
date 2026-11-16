@@ -337,6 +337,20 @@ header,.brand,.header-actions {
   overflow:auto;
 }
 
+.reset-confirm {
+  width:min(370px,calc(100% - 28px));
+}
+
+.reset-confirm p {
+  margin:0 0 20px;
+}
+
+.confirm-actions {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+
 .dialog::backdrop {
   background:#000b;
   backdrop-filter:blur(4px);

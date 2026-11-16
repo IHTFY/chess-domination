@@ -65,3 +65,15 @@ export const readScores = () => {
   }
   return scores;
 };
+
+// Another tab may have saved a record since this one loaded, so keep the better best for each piece.
+export const mergeScores = (a, b) => {
+  const merged = structuredClone(a);
+  for (const mode of ['MAX', 'MIN']) {
+    const better = mode === 'MAX' ? Math.max : Math.min;
+    for (const piece of Object.keys(merged[mode])) {
+      merged[mode][piece].pb = better(a[mode][piece].pb, b[mode][piece].pb);
+    }
+  }
+  return merged;
+};
