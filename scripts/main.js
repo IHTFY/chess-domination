@@ -1,4 +1,4 @@
-import { defaultScores, readBoolean, readMode, readScores, readStored, withScoresLock, writeStored } from './storage.js';
+import { defaultScores, mergeScores, readBoolean, readMode, readScores, withScoresLock, writeStored } from './storage.js';
 import { full, countPieces, isEmpty } from './utils.js';
 import { solve } from './solver.js';
 import { findIssues } from './findIssues.js';
@@ -346,7 +346,7 @@ function renderScores(pos) {
 function saveScores(record) {
   return withScoresLock(() => {
     // Keep in-memory records when browser storage is unavailable.
-    scores = readStored('scores') === null ? scores : readScores();
+    scores = mergeScores(scores, readScores());
     if (record) {
       const { mode, piece, count } = record;
       scores[mode][piece].pb = Math[mode.toLowerCase()](scores[mode][piece].pb, count);

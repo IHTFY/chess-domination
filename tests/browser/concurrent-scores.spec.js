@@ -97,3 +97,61 @@ for (const locks of ['unavailable', 'blocked']) {
     expect(errors).toEqual([]);
   });
 }
+
+test('a failed write keeps the in-session best when pieces are removed', async ({ page, context, baseURL }) => {
+  await context.route('**/*', route => new URL(route.request().url()).origin === baseURL ? route.continue() : route.abort());
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await page.waitForFunction(() => document.querySelector('#board')?.sparePieces && localStorage.getItem('scores'));
+  await page.evaluate(() => document.querySelector('#board').setPosition({ a1: 'wQ' }, false));
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MAX.Q.pb)).toBe(1);
+  await page.evaluate(() => {
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key === 'scores') throw new DOMException('Storage full', 'QuotaExceededError');
+      return setItem.call(this, key, value);
+    };
+    document.querySelector('#board').setPosition({ a1: 'wQ', b3: 'wQ', c5: 'wQ' }, false);
+  });
+  await expect(page.locator('#queenBest')).toHaveText('3');
+  await page.evaluate(async () => {
+    document.querySelector('#board').setPosition({ a1: 'wQ', b3: 'wQ' }, false);
+    await navigator.locks.request('chess-domination-scores', () => {});
+  });
+  await expect(page.locator('#queenBest')).toHaveText('3');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MAX.Q.pb)).toBe(1);
+});
+
+test('an inactive document lock rejection still saves the best without an unhandled error', async ({ page, context, baseURL }) => {
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await context.route('**/*', route => new URL(route.request().url()).origin === baseURL ? route.continue() : route.abort());
+  await page.goto('/');
+  await page.waitForFunction(() => document.querySelector('#board')?.sparePieces && localStorage.getItem('scores'));
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'locks', {
+      value: { request: () => Promise.reject(new DOMException('Document inactive', 'InvalidStateError')) },
+    });
+    document.querySelector('#board').setPosition({ a1: 'wQ', b3: 'wQ', c5: 'wQ' }, false);
+  });
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MAX.Q.pb)).toBe(3);
+  expect(errors).toEqual([]);
+});
+
+test('an error inside a locked change is reported without running the change again', async ({ page, context, baseURL }) => {
+  await context.route('**/*', route => new URL(route.request().url()).origin === baseURL ? route.continue() : route.abort());
+  await page.goto('/');
+  const result = await page.evaluate(async () => {
+    const { withScoresLock } = await import('/scripts/storage.js');
+    let calls = 0;
+    try {
+      await withScoresLock(() => {
+        calls++;
+        throw new DOMException('Change failed', 'SecurityError');
+      });
+    } catch (error) {
+      return { calls, name: error.name, message: error.message };
+    }
+  });
+  expect(result).toEqual({ calls: 1, name: 'SecurityError', message: 'Change failed' });
+});
