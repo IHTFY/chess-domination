@@ -200,7 +200,8 @@ let focusedSquare = 'a1';
 let gesture = null;
 let dragging = false;
 let cancelDrop = false;
-let wasSolved = false;
+let solvedBoard = null;
+let completionTimer;
 let exampleFen = null;
 let solves = 0;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -344,6 +345,7 @@ function renderScores(pos) {
 
 function updateStats(pos) {
   latestPosition = pos;
+  const fen = objToFen(pos);
   const counts = countPieces(pos);
   const types = pieces.filter(piece => counts[piece] > 0);
   const issues = findIssues(pos, gameMode);
@@ -352,9 +354,9 @@ function updateStats(pos) {
   const target = scores[gameMode][selected].wr;
   scores = mergeScores(scores, readScores());
   // The example stays the example only until the board differs from it, so a cleared or edited board is the player's.
-  if (objToFen(pos) !== exampleFen) exampleFen = null;
+  if (fen !== exampleFen) exampleFen = null;
   // An example is shown, not solved, so it never records a best.
-  if (valid && !isEmpty(pos) && objToFen(pos) !== exampleFen) {
+  if (valid && !isEmpty(pos) && fen !== exampleFen) {
     const piece = types[0];
     scores[gameMode][piece].pb = Math[gameMode.toLowerCase()](scores[gameMode][piece].pb, counts[piece]);
   }
@@ -382,20 +384,25 @@ function updateStats(pos) {
   else if (gameMode === 'MAX' && issues.length) $('hint').textContent = 'Some pieces are attacking. Tap a piece to remove it.';
   else $('hint').textContent = `Tap or drag to place a ${names[selected].toLowerCase()}. Tap again to remove it.`;
   highlight(hints ? issues : [], gameMode);
-  const solved = valid && count === target;
-  if (solved && !wasSolved && objToFen(pos) !== exampleFen) celebrate(count);
-  wasSolved = solved;
+  const solved = valid && count === target && fen !== exampleFen;
+  const nextSolvedBoard = solved ? `${gameMode}-${selected}-${fen}` : null;
+  if (nextSolvedBoard !== solvedBoard) {
+    clearTimeout(completionTimer);
+    solvedBoard = nextSolvedBoard;
+    if (solved) celebrate({ count, piece: selected, mode: gameMode, fen });
+  }
   renderScores(pos);
   queueMicrotask(() => board.updateComplete.then(decorateBoard));
 }
 
 // A board the player solved opens the results screen that carries the ad. Examples don't.
-function celebrate(count) {
-  const key = `${gameMode}-${selected}-${count}-${++solves}`;
-  setTimeout(() => {
-    if (!wasSolved || objToFen(latestPosition) === exampleFen || document.querySelector('dialog[open]')) return;
-    const name = names[selected].toLowerCase();
-    $('solved-text').textContent = gameMode === 'MIN'
+function celebrate({ count, piece, mode, fen }) {
+  const key = `${mode}-${piece}-${count}-${++solves}`;
+  completionTimer = setTimeout(() => {
+    if (gameMode !== mode || selected !== piece || board.fen() !== fen || fen === exampleFen) return;
+    if (!results.hidden || document.querySelector('dialog[open]')) return;
+    const name = names[piece].toLowerCase();
+    $('solved-text').textContent = mode === 'MIN'
       ? `${count} ${name}s cover every square. That is the minimum.`
       : `${count} ${name}s and none attack another. That is the maximum.`;
     cancelDrag();
