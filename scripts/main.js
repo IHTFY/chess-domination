@@ -1,4 +1,4 @@
-import { defaultScores, mergeScores, readBoolean, readMode, readScores, writeStored } from './storage.js';
+import { defaultScores, readBoolean, readMode, readScores, readStored, withScoresLock, writeStored } from './storage.js';
 import { full, countPieces, isEmpty } from './utils.js';
 import { solve } from './solver.js';
 import { findIssues } from './findIssues.js';
@@ -343,6 +343,19 @@ function renderScores(pos) {
     ? '+ means extra pieces above the minimum.' : '− means missing pieces below the maximum.');
 }
 
+function saveScores(record) {
+  return withScoresLock(() => {
+    // Keep in-memory records when browser storage is unavailable.
+    scores = readStored('scores') === null ? scores : readScores();
+    if (record) {
+      const { mode, piece, count } = record;
+      scores[mode][piece].pb = Math[mode.toLowerCase()](scores[mode][piece].pb, count);
+    }
+    writeStored('scores', JSON.stringify(scores));
+    renderScores(board.position);
+  });
+}
+
 function updateStats(pos) {
   latestPosition = pos;
   const fen = objToFen(pos);
@@ -352,16 +365,13 @@ function updateStats(pos) {
   const valid = types.length === 1 && issues.length === 0;
   const count = Object.keys(pos).length;
   const target = scores[gameMode][selected].wr;
-  scores = mergeScores(scores, readScores());
   // The example stays the example only until the board differs from it, so a cleared or edited board is the player's.
   if (fen !== exampleFen) exampleFen = null;
   // An example is shown, not solved, so it never records a best.
-  if (valid && !isEmpty(pos) && fen !== exampleFen) {
-    const piece = types[0];
-    scores[gameMode][piece].pb = Math[gameMode.toLowerCase()](scores[gameMode][piece].pb, counts[piece]);
-  }
+  const record = valid && !isEmpty(pos) && fen !== exampleFen
+    ? { mode: gameMode, piece: types[0], count: counts[types[0]] } : null;
+  saveScores(record);
   writeStored('gameMode', gameMode);
-  writeStored('scores', JSON.stringify(scores));
   animateNumber($('pieceCount'), count);
   animateNumber($('optimalCount'), target);
   $('goal-label').textContent = gameMode === 'MIN' ? 'Minimum' : 'Maximum';
@@ -581,9 +591,11 @@ $('resetBtn').addEventListener('click', () => $('resetConfirm').showModal());
 $('cancelReset').addEventListener('click', () => $('resetConfirm').close());
 $('confirmReset').addEventListener('click', () => {
   $('resetConfirm').close();
-  scores = structuredClone(defaultScores);
-  writeStored('scores', JSON.stringify(scores));
-  renderScores(board.position);
+  withScoresLock(() => {
+    scores = structuredClone(defaultScores);
+    writeStored('scores', JSON.stringify(scores));
+    renderScores(board.position);
+  });
   if (sound) {
     $('statsPanel').classList.add('scores-resetting');
     resetTimer = setTimeout(finishResetSound, 2500);

@@ -77,3 +77,13 @@ export const mergeScores = (a, b) => {
   }
   return merged;
 };
+
+// Saves and resets must hold the same lock across the storage read and write.
+export const withScoresLock = change => {
+  if (!navigator.locks) return change();
+  return navigator.locks.request('chess-domination-scores', change).catch(error => {
+    // Storage restrictions can also deny access to locks. Keep playing in that case.
+    if (error.name === 'SecurityError') return change();
+    throw error;
+  });
+};
