@@ -9,6 +9,12 @@ test.beforeEach(async ({ context }) => {
   await context.route(/^https?:\/\/(?!127\.0\.0\.1:8765(?:\/|$))/, route => route.abort());
 });
 
+async function placeQueens(page, squares) {
+  for (const square of squares) {
+    await page.getByRole('button', { name: `${square[0]} ${square[1]}, empty`, exact: true }).click();
+  }
+}
+
 test('solve, clear, mode, record persistence and reset work without errors', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -20,6 +26,10 @@ test('solve, clear, mode, record persistence and reset work without errors', asy
   await page.getByRole('button', { name: 'Place queen', exact: true }).click();
   await page.click('#exampleBtn');
   await expect.poll(() => page.evaluate(() => Object.keys(document.querySelector('#board').position).length)).toBe(8);
+  // The example is shown, not solved by the player, so it records nothing.
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MAX.Q.pb)).toBe(0);
+  await page.click('#clearBtn');
+  await placeQueens(page, ['a1', 'b5', 'c8', 'd6', 'e3', 'f7', 'g2', 'h4']);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MAX.Q.pb)).toBe(8);
   await page.reload();
   await page.click('#statsBtn');
@@ -30,11 +40,16 @@ test('solve, clear, mode, record persistence and reset work without errors', asy
   await page.getByRole('button', { name: 'Place queen', exact: true }).click();
   await page.click('#exampleBtn');
   await expect.poll(() => page.evaluate(() => Object.keys(document.querySelector('#board').position).length)).toBe(5);
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MIN.Q.pb)).toBe(5);
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MIN.Q.pb)).toBe(64);
   await page.click('#clearBtn');
   await expect.poll(() => page.evaluate(() => Object.keys(document.querySelector('#board').position).length)).toBe(0);
+  await placeQueens(page, ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7']);
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MIN.Q.pb)).toBe(7);
+  await page.click('#clearBtn');
   await page.click('#statsBtn');
   await page.click('#resetBtn');
+  await expect(page.locator('#resetConfirm')).toBeVisible();
+  await page.click('#confirmReset');
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MIN.Q.pb)).toBe(64);
   await expect(page.locator('#statsPanel')).not.toHaveClass(/scores-resetting/);
   expect(errors).toEqual([]);
@@ -201,6 +216,8 @@ test('scores open in a dismissible popup on short screens', async ({ page }) => 
   await page.click('#statsBtn');
   await expect(page.locator('#statsPanel')).toBeVisible();
   await page.click('#resetBtn');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#resetConfirm')).toBeHidden();
   await page.keyboard.press('Escape');
   await expect(page.locator('#statsPanel')).toBeHidden();
   await page.click('#statsBtn');
@@ -447,4 +464,63 @@ test('the ad beside the board comes back when the ad-free token is not valid, an
   expect(await boardWidth()).toBe(before);
   await page.locator('[data-square="e4"]').click();
   await expect.poll(() => page.evaluate(() => window.__shown)).toEqual([['160x600', 'play/1']]);
+});
+
+test('an example position never records a personal best', async ({ page }) => {
+  await ready(page);
+  for (const mode of ['#nonAttackingBtn', '#dominationBtn']) {
+    await page.click(mode);
+    for (const piece of ['queen', 'rook', 'knight']) {
+      await page.getByRole('button', { name: `Place ${piece}`, exact: true }).click();
+      await page.click('#exampleBtn');
+      await expect(page.locator('#exampleBtn')).toBeEnabled();
+    }
+  }
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('scores')))).toEqual(await page.evaluate(async () => (await import('/scripts/storage.js')).defaultScores));
+});
+
+test('reset asks first, and keeping the scores changes nothing', async ({ page }) => {
+  await ready(page);
+  await page.getByRole('button', { name: 'Place queen', exact: true }).click();
+  await placeQueens(page, ['a1']);
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MAX.Q.pb)).toBe(1);
+  await page.click('#statsBtn');
+  await page.click('#resetBtn');
+  await expect(page.locator('#resetConfirm')).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MAX.Q.pb)).toBe(1);
+  await page.click('#cancelReset');
+  await expect(page.locator('#resetConfirm')).toBeHidden();
+  await expect(page.locator('#statsPanel')).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MAX.Q.pb)).toBe(1);
+  await page.click('#resetBtn');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#resetConfirm')).toBeHidden();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MAX.Q.pb)).toBe(1);
+  await page.click('#resetBtn');
+  await page.click('#confirmReset');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('scores')).MAX.Q.pb)).toBe(0);
+});
+
+test('two tabs keep each other\'s records, and a reset in one reaches the other', async ({ context }) => {
+  await context.route(/^https?:\/\/(?!127\.0\.0\.1:8765(?:\/|$))/, route => route.abort());
+  const stored = page => page.evaluate(() => JSON.parse(localStorage.getItem('scores')));
+  const first = await context.newPage();
+  const second = await context.newPage();
+  await ready(first);
+  await ready(second);
+  await first.getByRole('button', { name: 'Place queen', exact: true }).click();
+  await placeQueens(first, ['a1']);
+  await expect.poll(async () => (await stored(first)).MAX.Q.pb).toBe(1);
+  // The second tab loaded before that record existed.
+  await second.getByRole('button', { name: 'Place knight', exact: true }).click();
+  await placeQueens(second, ['a1', 'a2']);
+  await expect.poll(async () => (await stored(second)).MAX.N.pb).toBe(2);
+  expect((await stored(second)).MAX.Q.pb).toBe(1);
+  await first.click('#statsBtn');
+  await first.click('#resetBtn');
+  await first.click('#confirmReset');
+  await expect.poll(async () => (await stored(first)).MAX.N.pb).toBe(0);
+  await second.getByRole('button', { name: 'b 1, empty', exact: true }).click();
+  await expect.poll(async () => (await stored(second)).MAX.N.pb).toBe(3);
+  expect((await stored(second)).MAX.Q.pb).toBe(0);
 });

@@ -1,6 +1,6 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultScores, readScores, readMode, readBoolean, writeStored } from '../scripts/storage.js';
+import { defaultScores, mergeScores, readScores, readMode, readBoolean, writeStored } from '../scripts/storage.js';
 
 const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
 afterEach(() => {
@@ -68,4 +68,23 @@ test('blocked storage and failed writes do not prevent playing', () => {
   storage();
   globalThis.localStorage.setItem = () => { throw new Error('Quota exceeded'); };
   assert.doesNotThrow(() => writeStored('scores', '{}'));
+});
+
+test('merging two score sets keeps the better best for every piece and mode', () => {
+  const a = structuredClone(defaultScores);
+  const b = structuredClone(defaultScores);
+  a.MAX.Q.pb = 5; b.MAX.Q.pb = 7;
+  a.MIN.Q.pb = 6; b.MIN.Q.pb = 9;
+  a.MIN.N.pb = 20;
+  b.MAX.K.pb = 3;
+  const merged = mergeScores(a, b);
+  const expected = structuredClone(defaultScores);
+  expected.MAX.Q.pb = 7;
+  expected.MIN.Q.pb = 6;
+  expected.MIN.N.pb = 20;
+  expected.MAX.K.pb = 3;
+  assert.deepEqual(merged, expected);
+  assert.deepEqual(mergeScores(b, a), expected);
+  assert.equal(a.MAX.Q.pb, 5);
+  assert.equal(b.MAX.Q.pb, 7);
 });
