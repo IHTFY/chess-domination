@@ -299,13 +299,14 @@ function decorateBoard() {
     el.setAttribute('aria-label', `Place ${names[piece].toLowerCase()}`);
     el.setAttribute('aria-pressed', String(piece === selected));
     el.title = names[piece];
+    for (const img of el.querySelectorAll('img')) img.alt = '';
   }
   for (const el of board.shadowRoot.querySelectorAll('[data-square]')) {
     const square = el.dataset.square;
     const piece = latestPosition[square]?.[1];
     el.setAttribute('role', 'button');
     el.setAttribute('tabindex', square === focusedSquare ? '0' : '-1');
-    el.setAttribute('aria-label', square + (piece ? `, ${names[piece]}` : ', empty'));
+    el.setAttribute('aria-label', `${square[0]} ${square[1]}` + (piece ? `, ${names[piece]}` : ', empty'));
   }
 }
 
@@ -369,7 +370,7 @@ function updateStats(pos) {
   $('nonAttackingBtn').setAttribute('aria-pressed', String(gameMode === 'MAX'));
   document.querySelector('.mode').dataset.mode = gameMode;
   $('highlightSwitch').setAttribute('aria-pressed', String(hints));
-  $('highlightSwitch').setAttribute('aria-label', gameMode === 'MIN' ? 'Highlight uncovered squares' : 'Highlight attacking pieces');
+  $('highlightSwitch').setAttribute('aria-label', `${$('coverage-label').textContent} ${value} / ${total}, ${gameMode === 'MIN' ? 'highlight uncovered squares' : 'highlight attacking pieces'}`);
   if (types.length > 1) $('hint').textContent = 'Use one piece type at a time.';
   else if (valid && count === target) $('hint').textContent = gameMode === 'MIN'
     ? 'Optimal solution. Every square is covered.' : 'Optimal solution. No pieces attack each other.';
