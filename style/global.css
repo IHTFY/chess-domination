@@ -1428,7 +1428,7 @@ header,.brand,.header-actions {
 }
 
 /* The results screen carries its own ad, so the one beside the game steps aside. */
-body:has(> .app.on-results) > .play-ad {
+.app.on-results ~ .play-ad {
   display:none;
 }
 

@@ -94,43 +94,65 @@ function freshBox(box) {
 }
 
 // A window that changes size (a phone turning, a desktop window dragged) asks for the results
-// screen's next ad once it has held still this long, so one turn asks once.
+// screen's next ad once it has held still this long, so one turn or drag asks once.
 const REFIT_MS = 200;
+
+// The sizes the results screen offers the loader, largest first (style/global.css).
+const SCREEN_SIZES = ['300x250', '320x100', '320x50'];
 
 // The game over the results screen shows, while it shows; how many boxes it has had; and the
 // request waiting for the window to settle.
 let screenKey = null;
 let screenBoxes = 0;
 let screenTimer;
+let screenAsk = null;
 
 // Whether the result, the box and the buttons all show without scrolling the screen.
 const fits = screen => screen.scrollHeight <= screen.clientHeight && screen.scrollWidth <= screen.clientWidth;
 
+function cancelScreenAsk() {
+  clearTimeout(screenTimer);
+  screenAsk = null;
+}
+
+/** Runs `ask` once the window has held still for REFIT_MS; another call before then starts the wait again. */
+function askOnceSettled(ask) {
+  cancelScreenAsk();
+  screenAsk = ask;
+  screenTimer = setTimeout(() => {
+    screenAsk = null;
+    ask();
+  }, REFIT_MS);
+}
+
 /**
- * Puts a new box on `screen` at the size the stylesheet gives it in this window, and asks for its
- * ad after `delay` ms. Where the screen can't hold the box beside the result and buttons, the ad
- * is left out, with its label and links.
+ * Puts a new box on `screen` at the size the stylesheet gives it in this window, or the next
+ * smaller one the screen can hold beside the result and buttons, and asks for its ad, at once or
+ * (`later`) once the window has settled. Where no size fits, the ad is left out, with its label
+ * and links.
  */
-function placeScreenAd(screen, delay) {
+function placeScreenAd(screen, later) {
   const box = freshBox(screen.querySelector('.ad-box'));
   box.removeAttribute('style'); // The last box's size.
   delete box.dataset.adSize;
   screen.classList.remove('ad-left-out');
-  clearTimeout(screenTimer);
-  const size = sizeOf(box);
-  if (size) {
-    box.dataset.adSize = size;
-    // The loader's unit keeps this size, so the box does too while the window changes.
-    const [width, height] = size.split('x');
+  cancelScreenAsk();
+  const first = SCREEN_SIZES.indexOf(sizeOf(box)); // -1 where the stylesheet hides the box.
+  // The loader's unit keeps the box's size, so the box keeps it too while the window changes.
+  const size = first >= 0 && SCREEN_SIZES.slice(first).find(candidate => {
+    const [width, height] = candidate.split('x');
     Object.assign(box.style, { width: `${width}px`, height: `${height}px`, minHeight: `${height}px` });
-  }
-  if (!size || !fits(screen)) {
+    return fits(screen);
+  });
+  if (!size) {
+    box.removeAttribute('style');
     screen.classList.add('ad-left-out');
     return;
   }
+  box.dataset.adSize = size;
   // The loader places one ad per key, so each later box on this visit gets a key of its own.
   const key = screenBoxes++ ? `${screenKey}/${screenBoxes}` : screenKey;
-  if (delay) screenTimer = setTimeout(() => showAd(box, key), delay);
+  if (later) askOnceSettled(() => showAd(box, key));
   else showAd(box, key);
 }
 
@@ -144,23 +166,24 @@ function showScreenAd(name, screen, key) {
   if (name !== AD_SCREEN || document.documentElement.classList.contains('ad-free')) return;
   screenKey = key;
   screenBoxes = 0;
-  placeScreenAd(screen, 0);
+  placeScreenAd(screen, false);
 }
 
 /**
  * After the window changes size: an ad that no longer fits `screen` (a phone turned on its side)
- * gives way at once to a box the screen can hold, or to none. One that still fits stays.
+ * gives way at once to a box the screen can hold, or to none. One that still fits stays, and if
+ * its request is still waiting, the wait starts again.
  */
 function refitScreenAd(screen) {
   if (screenKey === null) return;
-  if (!screen.classList.contains('ad-left-out') && fits(screen)) return;
-  placeScreenAd(screen, REFIT_MS);
+  if (screen.classList.contains('ad-left-out') || !fits(screen)) placeScreenAd(screen, true);
+  else if (screenAsk) askOnceSettled(screenAsk);
 }
 
 /** Swaps the box on a screen that is going away for an empty one, so no ad stays on the page out of view. */
 function clearScreenAd(screen) {
   screenKey = null;
-  clearTimeout(screenTimer);
+  cancelScreenAsk();
   freshBox(screen.querySelector('.ad-box'));
 }
 

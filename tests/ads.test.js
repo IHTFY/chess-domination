@@ -287,8 +287,10 @@ function screen() {
     clientHeight: 700,
     get scrollWidth() { return 360; },
     get scrollHeight() {
-      const showing = !element.classList.has('ad-left-out') && element.box.dataset.adSize;
-      return !showing || !fitsSizes || fitsSizes.includes(element.box.dataset.adSize) ? 700 : 900;
+      const { width, height } = element.box.style;
+      const size = width && `${parseInt(width, 10)}x${parseInt(height, 10)}`;
+      const showing = !element.classList.has('ad-left-out') && size;
+      return !showing || !fitsSizes || fitsSizes.includes(size) ? 700 : 900;
     },
   };
   element.classList.contains = element.classList.has;
@@ -424,6 +426,44 @@ test('a turned window swaps a results ad that no longer fits for one that does, 
   assert.equal(shown.length, 2);
 });
 
+test('a screen too short for the stylesheet\'s size gets the next smaller size that fits', async () => {
+  document.documentElement.classList.delete('ad-free');
+  railSize = [300, 250];
+  fitsSizes = ['320x100', '320x50'];
+  const { showScreenAd } = await loadAds();
+  const results = screen();
+  showScreenAd('results', results, 'a');
+  assert.equal(results.classList.has('ad-left-out'), false);
+  assert.equal(results.box.dataset.adSize, '320x100');
+  assert.deepEqual(results.box.style, { width: '320px', height: '100px', minHeight: '100px' });
+  added[0].fire('load');
+  await tick();
+  assert.deepEqual(shown, [[results.box, 'a']]);
+});
+
+test('a window still being dragged waits until it holds still before asking for the new box', async () => {
+  document.documentElement.classList.delete('ad-free');
+  railSize = [300, 250];
+  const { showScreenAd, refitScreenAd } = await loadAds();
+  const results = screen();
+  showScreenAd('results', results, 'a');
+  added[0].fire('load');
+  await tick();
+  railSize = [320, 50];
+  fitsSizes = ['320x50'];
+  refitScreenAd(results);
+  const waiting = results.box;
+  // Each resize event of the drag starts the wait again; the box fits, so it stays.
+  for (let step = 0; step < 3; step++) {
+    await new Promise(resolve => setTimeout(resolve, 120));
+    refitScreenAd(results);
+  }
+  assert.equal(results.box, waiting);
+  assert.equal(shown.length, 1);
+  await settle();
+  assert.deepEqual(shown.map(([shownBox, key]) => [shownBox.dataset.adSize, key]), [['300x250', 'a'], ['320x50', 'a/2']]);
+});
+
 test('a screen that holds no box leaves the ad out and asks for none until it can', async () => {
   document.documentElement.classList.delete('ad-free');
   railSize = [320, 50];
@@ -448,12 +488,14 @@ test('a screen that holds no box leaves the ad out and asks for none until it ca
 test('a results screen that closes before its settled box is asked for asks for nothing', async () => {
   document.documentElement.classList.delete('ad-free');
   railSize = [300, 250];
-  fitsSizes = ['320x50'];
+  fitsSizes = [];
   const { showScreenAd, refitScreenAd, clearScreenAd } = await loadAds();
   const results = screen();
   showScreenAd('results', results, 'a');
   railSize = [320, 50];
+  fitsSizes = ['320x50'];
   refitScreenAd(results);
+  assert.equal(results.box.dataset.adSize, '320x50');
   clearScreenAd(results);
   refitScreenAd(results);
   await settle();

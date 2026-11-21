@@ -266,8 +266,9 @@ test('a solved board opens the results screen once per solve; examples and first
 
 // Each box as the loader fills it: a fixed-size unit of the size asked for.
 const fillingLoader = 'window.ihtfyAds = { show(box) { const [w, h] = box.dataset.adSize.split("x"); const ad = document.createElement("ins"); ad.style.cssText = `display:inline-block;width:${w}px;height:${h}px`; box.append(ad); (window.__shown ??= []).push(box.dataset.adSize); } };';
-const resultsCases = [[360, 640], [390, 750], [412, 800], [1280, 800], [375, 560], [360, 400]];
-for (const [width, height] of resultsCases) {
+// A third entry is the size a window too short for the stylesheet's size steps down to.
+const resultsCases = [[360, 640], [390, 750], [412, 800], [1280, 800], [375, 560], [360, 400], [1440, 620, '320x100']];
+for (const [width, height, smaller] of resultsCases) {
   test(`at ${width}x${height} the results ad is in view, clear of every control, and does not shift the screen`, async ({ page }) => {
     await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: fillingLoader }));
     await page.setViewportSize({ width, height });
@@ -291,7 +292,7 @@ for (const [width, height] of resultsCases) {
     await expect.poll(() => page.evaluate(() => window.__shown)).toEqual([before.size]);
     const after = await measure();
     expect(after).toEqual(before);
-    expect(before.size).toBe(height >= 576 ? '300x250' : height >= 425 ? '320x100' : '320x50');
+    expect(before.size).toBe(smaller ?? (height >= 576 ? '300x250' : height >= 425 ? '320x100' : '320x50'));
     expect(before.inView).toBe(true);
     expect(before.scroll).toEqual([width, height]);
     expect(before.controls).toBeGreaterThanOrEqual(3);
@@ -332,7 +333,7 @@ test('turning a phone with the results open keeps the ad and both buttons in the
   await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['300x250']);
   await page.setViewportSize({ width: 760, height: 360 });
   // The 300×250 box doesn't fit on its side; it goes at once, and a 320×50 one takes its place.
-  expect((await resultsLayout(page)).size).toBe('320x50');
+  await expect.poll(async () => (await resultsLayout(page)).size).toBe('320x50');
   await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['300x250', '320x50']);
   const turned = await resultsLayout(page);
   expect(turned).toMatchObject({ size: '320x50', filled: 1, boxInView: true, labelInView: true, textInView: true, panelScrolls: false });

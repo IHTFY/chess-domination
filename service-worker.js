@@ -1,6 +1,6 @@
 // Stamped by `pnpm sw:stamp` from the contents of every precached file, so any
 // change to the app changes this file byte-for-byte and browsers install an update.
-const VERSION = 'd13e59dc4226';
+const VERSION = '61db9eeb5ba5';
 const CACHE_PREFIX = `chess-domination-${self.registration.scope}-`;
 const CACHE_NAME = `${CACHE_PREFIX}${VERSION}`;
 
