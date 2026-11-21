@@ -450,6 +450,7 @@ for (const [width, height, size] of railCases) {
 
 test('the ad beside the board steps aside while the results show their own, at any window size', async ({ page }) => {
   await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: fillingLoader }));
+  await page.clock.install();
   await page.setViewportSize({ width: 1920, height: 850 });
   await ready(page);
   await page.locator('[data-square="e4"]').click();
@@ -466,9 +467,12 @@ test('the ad beside the board steps aside while the results show their own, at a
   await page.setViewportSize({ width: 1920, height: 850 });
   await expect(page.locator('#playAd')).toBeHidden();
   await expect(visibleAds()).toHaveCount(1);
-  // Back on the board, the rail returns with a new ad.
+  // Back on the board, the rail returns, and its new ad waits until the last one has had its minute.
   await page.click('#backBtn');
   await expect(page.locator('#playAd')).toBeVisible();
+  await expect(page.locator('#playAdBox')).toBeEmpty();
+  expect(await page.evaluate(() => window.__shown)).toEqual(['300x600', '300x250']);
+  await page.clock.runFor(60_000);
   await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['300x600', '300x250', '300x600']);
   await expect(visibleAds()).toHaveCount(1);
 });

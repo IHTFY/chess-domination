@@ -126,8 +126,8 @@ function askOnceSettled(ask) {
 }
 
 /**
- * Puts a new box on `screen` at the size the stylesheet gives it in this window, or the next
- * smaller one the screen can hold beside the result and buttons, and asks for its ad, at once or
+ * Puts a new box on `screen` at the size the stylesheet gives it in this window, or else the first
+ * other size the screen can hold beside the result and buttons, and asks for its ad, at once or
  * (`later`) once the window has settled. Where no size fits, the ad is left out, with its label
  * and links.
  */
@@ -137,9 +137,9 @@ function placeScreenAd(screen, later) {
   delete box.dataset.adSize;
   screen.classList.remove('ad-left-out');
   cancelScreenAsk();
-  const first = SCREEN_SIZES.indexOf(sizeOf(box)); // -1 where the stylesheet hides the box.
+  const preferred = sizeOf(box); // Empty where the stylesheet hides the box.
   // The loader's unit keeps the box's size, so the box keeps it too while the window changes.
-  const size = first >= 0 && SCREEN_SIZES.slice(first).find(candidate => {
+  const size = SCREEN_SIZES.includes(preferred) && [preferred, ...SCREEN_SIZES].find(candidate => {
     const [width, height] = candidate.split('x');
     Object.assign(box.style, { width: `${width}px`, height: `${height}px`, minHeight: `${height}px` });
     return fits(screen);
@@ -197,33 +197,45 @@ let playSize = '';
 let playKeys = 0;
 // When the ad beside the board was placed; Infinity while its request is pending.
 let playPlacedAt = -Infinity;
+// A returning rail's request, waiting out the rest of its last ad's minute.
+let playTimer;
 
 // The box's size as the stylesheet sets it, such as "160x600"; empty where the ad doesn't fit.
 const sizeOf = box => (box.offsetWidth ? `${box.offsetWidth}x${box.offsetHeight}` : '');
 
 // The loader won't fill a box twice, so each ad gets a new box. The old one
 // goes even when the new one is hidden, so no ad stays on the page out of view.
-function renewPlayAd() {
+function renewPlayAd(wait = 0) {
+  clearTimeout(playTimer);
   const box = playBox.cloneNode(false);
   playBox.replaceWith(box);
   playBox = box;
   playSize = sizeOf(box);
   if (!playSize) return;
   box.dataset.adSize = playSize;
-  playPlacedAt = Infinity;
   // The minute starts once the loader has been asked to place the ad; a failed
-  // request frees the next game to try again.
-  showAd(box, `play/${++playKeys}`).then(placed => {
-    if (box === playBox) playPlacedAt = placed ? Date.now() : -Infinity;
-  });
+  // request frees the next game to try again. A request waiting for its turn
+  // keeps the last ad's time, so the minute still counts from that ad.
+  const ask = () => {
+    playPlacedAt = Infinity;
+    showAd(box, `play/${++playKeys}`).then(placed => {
+      if (box === playBox) playPlacedAt = placed ? Date.now() : -Infinity;
+    });
+  };
+  if (wait > 0) playTimer = setTimeout(ask, wait);
+  else ask();
 }
 
 /**
  * Gives the ad beside the board a new box when the stylesheet has changed its size: the window
- * crossed into another ad size, or the results screen hid the rail or brought it back.
+ * crossed into another ad size, or the results screen hid the rail or brought it back. A rail
+ * brought back by the results closing (`afterResults`) asks for its ad only once the last one
+ * has had its minute, as a new game does.
  */
-function fitPlayAd() {
-  if (playBox && sizeOf(playBox) !== playSize) renewPlayAd();
+function fitPlayAd(afterResults = false) {
+  if (!playBox || sizeOf(playBox) === playSize) return;
+  const left = playPlacedAt + PLAY_AD_MIN_MS - Date.now();
+  renewPlayAd(afterResults && Number.isFinite(left) ? left : 0);
 }
 
 /** Fills `box`, beside the board, after the first tap or key press, and again whenever the window crosses into another ad size. */
@@ -232,7 +244,7 @@ function startPlayAd(box) {
   firstInput.then(() => {
     playBox = box;
     renewPlayAd();
-    addEventListener('resize', fitPlayAd);
+    addEventListener('resize', () => fitPlayAd());
   });
 }
 
@@ -523,7 +535,7 @@ function closeResults() {
   results.hidden = true;
   document.querySelector('.layout').hidden = false;
   $('app').classList.remove('on-results');
-  fitPlayAd();
+  fitPlayAd(true);
   focusBeforeResults?.focus();
 }
 

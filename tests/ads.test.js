@@ -51,6 +51,7 @@ beforeEach(() => {
 
 afterEach(() => {
   mock.restoreAll();
+  mock.timers.reset();
   delete globalThis.addEventListener;
   delete globalThis.document;
   delete globalThis.window;
@@ -441,6 +442,16 @@ test('a screen too short for the stylesheet\'s size gets the next smaller size t
   assert.deepEqual(shown, [[results.box, 'a']]);
 });
 
+test('a screen too narrow for the stylesheet\'s 320px size gets the narrower 300×250 box where it fits', async () => {
+  document.documentElement.classList.delete('ad-free');
+  railSize = [320, 100];
+  fitsSizes = ['300x250'];
+  const { showScreenAd } = await loadAds();
+  const results = screen();
+  showScreenAd('results', results, 'a');
+  assert.equal(results.box.dataset.adSize, '300x250');
+});
+
 test('a window still being dragged waits until it holds still before asking for the new box', async () => {
   document.documentElement.classList.delete('ad-free');
   railSize = [300, 250];
@@ -516,6 +527,66 @@ test('the ad beside the board leaves with its box while the rail is hidden, and 
   assert.equal(placed.isConnected, false);
   railSize = [300, 600];
   fitPlayAd();
+  await tick();
+  assert.deepEqual(shownKeys(), [['160x600', 'play/1'], ['300x600', 'play/2']]);
+});
+
+test('the rail coming back from the results waits out its last ad\'s minute before asking again', async () => {
+  mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1_000_000 });
+  const flush = async () => { for (let i = 0; i < 5; i++) await null; };
+  const { startPlayAd, fitPlayAd, newPlayAd } = await loadAds();
+  startPlayAd(railBox());
+  fire('pointerdown');
+  await flush();
+  added[0].fire('load');
+  await flush();
+  assert.deepEqual(shownKeys(), [['160x600', 'play/1']]);
+  // Solved 20 seconds later: the results hide the rail, and close 10 seconds after that.
+  mock.timers.tick(20_000);
+  railSize = [0, 0];
+  fitPlayAd();
+  mock.timers.tick(10_000);
+  railSize = [160, 600];
+  fitPlayAd(true);
+  await flush();
+  assert.equal(shown.length, 1);
+  // Play again within the minute doesn't ask either.
+  newPlayAd();
+  await flush();
+  assert.equal(shown.length, 1);
+  // Solved again before the minute is up: the waiting request goes with the rail, and the
+  // minute still counts from the first ad.
+  mock.timers.tick(10_000);
+  railSize = [0, 0];
+  fitPlayAd();
+  mock.timers.tick(5_000);
+  railSize = [160, 600];
+  fitPlayAd(true);
+  mock.timers.tick(14_999);
+  await flush();
+  assert.equal(shown.length, 1);
+  mock.timers.tick(1);
+  await flush();
+  assert.deepEqual(shownKeys(), [['160x600', 'play/1'], ['160x600', 'play/2']]);
+  // Once the minute has passed, the rail comes back with an ad at once.
+  mock.timers.tick(90_000);
+  railSize = [0, 0];
+  fitPlayAd();
+  railSize = [160, 600];
+  fitPlayAd(true);
+  await flush();
+  assert.deepEqual(shownKeys().map(([, key]) => key), ['play/1', 'play/2', 'play/3']);
+});
+
+test('a resize brings the rail\'s new size in at once, whenever its last ad was placed', async () => {
+  const { startPlayAd } = await loadAds();
+  startPlayAd(railBox());
+  fire('pointerdown');
+  await tick();
+  added[0].fire('load');
+  await tick();
+  railSize = [300, 600];
+  fire('resize');
   await tick();
   assert.deepEqual(shownKeys(), [['160x600', 'play/1'], ['300x600', 'play/2']]);
 });
