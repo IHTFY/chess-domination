@@ -64,6 +64,53 @@ test('a tap during an installed launch only skips it', async ({ page }) => {
   expect(await page.evaluate(() => document.getElementById('board').shadowRoot.querySelector('[data-square="a1"]').getAnimations().length)).toBe(0);
 });
 
+test('the exit waits under Chrome\'s fading launch screen until 300 ms after the first paint', async ({ page }) => {
+  await page.addInitScript(installed);
+  await page.addInitScript(() => {
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (keyframes, options) {
+      if (this.id === 'launch-grid') window.exitStarted ??= performance.now();
+      return animate.call(this, keyframes, options);
+    };
+  });
+  await page.goto('/');
+  await page.waitForFunction(() => window.exitStarted);
+  const { started, paint } = await page.evaluate(() => ({
+    started: window.exitStarted,
+    paint: performance.getEntriesByName('first-paint')[0].startTime,
+  }));
+  expect(started).toBeGreaterThanOrEqual(paint + 300);
+});
+
+test('a tap while the launch screen holds ends it without playing the exit', async ({ page }) => {
+  await page.addInitScript(installed);
+  await page.addInitScript(slow);
+  await page.addInitScript(() => {
+    // Without a first-paint entry the copy holds a full 300 ms, slowed here to 3 s.
+    const entries = performance.getEntriesByName.bind(performance);
+    performance.getEntriesByName = name => name === 'first-paint' ? [] : entries(name);
+    let exit;
+    Object.defineProperty(window, 'launchExit', {
+      get: () => exit,
+      set: fn => { exit = (...args) => { window.exitCalled = true; return fn(...args); }; },
+    });
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (keyframes, options) {
+      if (this.id === 'launch-grid') window.exitPlayed = true;
+      return animate.call(this, keyframes, options);
+    };
+  });
+  await page.goto('/');
+  await page.waitForFunction(() => window.exitCalled);
+  const sound = await page.locator('#soundSwitch').getAttribute('aria-pressed');
+  const { x, y, width, height } = await page.locator('#soundSwitch').boundingBox();
+  await page.mouse.click(x + width / 2, y + height / 2);
+  await expect(page.locator('#launch')).toHaveCount(0, { timeout: 1000 });
+  await expect(page.locator('#soundSwitch')).toHaveAttribute('aria-pressed', sound);
+  expect(await page.evaluate(() => window.exitPlayed)).toBeUndefined();
+  expect(await page.evaluate(() => document.documentElement.inert)).toBe(false);
+});
+
 test('a layout change during the launch aims the icon at the moved board', async ({ page }) => {
   await page.addInitScript(installed);
   await page.addInitScript(slow);

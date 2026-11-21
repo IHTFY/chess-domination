@@ -54,8 +54,9 @@
     </script>
     <style>
       /* Installed-app launch: the first paint copies Chrome's launch screen (manifest background,
-         maskable icon at 128px, name near the bottom), then launchExit() (the module script below) plays
-         the icon's board onto the game's board and its queen into the piece tray. */
+         maskable icon at 128px), then launchExit() (the module script below) plays the icon's board onto
+         the game's board and its queen into the piece tray. The copy has no name: Chrome lays its name
+         out against the whole screen, so a copy can sit off it, and Chrome's own fades out in place. */
       #launch {
         display: none;
       }
@@ -76,13 +77,6 @@
         position: absolute;
         inset: 0;
       }
-      #launch-name {
-        position: absolute;
-        inset: auto 0 56px;
-        font: 24px/1 Roboto, system-ui, sans-serif;
-        text-align: center;
-        color: rgb(255 255 255 / 0.87);
-      }
     </style>
     <script>
       // Plays once per fresh launch of the installed app: never in a browser tab, on reload, or on return.
@@ -102,10 +96,13 @@
         let animations = [];
         let skipped = false;
         let layout;
+        let holding;
         let follow = () => {};
         const resized = () => follow();
         const skip = () => {
           skipped = true;
+          // Nothing plays yet while the copy holds still, so it simply goes.
+          if (holding) return end();
           animations.forEach((a) => a.finish());
         };
         // While the copy shows, a tap or key only skips it: nothing behind it reacts.
@@ -116,6 +113,7 @@
         };
         const end = () => {
           clearTimeout(fallback);
+          clearTimeout(holding);
           removeEventListener('pointerdown', swallow, true);
           removeEventListener('keydown', swallow, true);
           layout?.disconnect();
@@ -138,46 +136,56 @@
           if (!overlay || !root.classList.contains('launching')) return;
           // A tap or key while the game was loading: show it at once.
           if (skipped) return end();
+          // Chrome fades its own launch screen out over about 300 ms after the first paint. The copy holds
+          // still under it until then, so the icon never shows twice; a game ready later starts at once.
+          const paint = performance.getEntriesByName('first-paint')[0];
+          const hold = paint ? Math.max(0, paint.startTime + 300 - performance.now()) : 300;
           clearTimeout(fallback);
-          fallback = setTimeout(end, 2000);
-          const page = [...document.body.children].filter((el) => el !== overlay);
-          const box = (el) => {
-            const { x, y, width, height } = el.getBoundingClientRect();
-            return `${x} ${y} ${width} ${height}`;
-          };
-          let boxes = page.map(box).join();
-          try {
-            if (!matchMedia('(prefers-reduced-motion: reduce)').matches) animations = play(overlay);
-          } catch {
-            animations = [];
-          }
-          try {
-            if (animations.length) {
-              // Targets measured at the start go stale when the layout changes: on a cold start Chrome's
-              // window grows as its splash leaves, and a turn or the ad rail moves the board.
-              follow = () => {
-                try {
-                  aim ? aim() : skip();
-                } catch {
-                  skip();
-                }
-              };
-            } else {
-              animations = [overlay.animate({ opacity: [1, 0] }, { duration: 200, easing: 'ease-out', fill: 'forwards' })];
+          fallback = setTimeout(end, hold + 2000);
+          const start = () => {
+            const page = [...document.body.children].filter((el) => el !== overlay);
+            const box = (el) => {
+              const { x, y, width, height } = el.getBoundingClientRect();
+              return `${x} ${y} ${width} ${height}`;
+            };
+            let boxes = page.map(box).join();
+            try {
+              if (!matchMedia('(prefers-reduced-motion: reduce)').matches) animations = play(overlay);
+            } catch {
+              animations = [];
             }
-            Promise.all(animations.map((a) => a.finished)).then(end, end);
-            // The observer reports every element once on observe, so only a changed box counts.
-            layout = new ResizeObserver(() => {
-              const now = page.map(box).join();
-              if (now !== boxes) follow();
-              boxes = now;
-            });
-            page.forEach((el) => layout.observe(el));
-            // A wider window can move the board without resizing any of these boxes.
-            addEventListener('resize', resized);
-          } catch {
-            end();
-          }
+            try {
+              if (animations.length) {
+                // Targets measured at the start go stale when the layout changes: on a cold start Chrome's
+                // window grows as its splash leaves, and a turn or the ad rail moves the board.
+                follow = () => {
+                  try {
+                    aim ? aim() : skip();
+                  } catch {
+                    skip();
+                  }
+                };
+              } else {
+                animations = [overlay.animate({ opacity: [1, 0] }, { duration: 200, easing: 'ease-out', fill: 'forwards' })];
+              }
+              Promise.all(animations.map((a) => a.finished)).then(end, end);
+              // The observer reports every element once on observe, so only a changed box counts.
+              layout = new ResizeObserver(() => {
+                const now = page.map(box).join();
+                if (now !== boxes) follow();
+                boxes = now;
+              });
+              page.forEach((el) => layout.observe(el));
+              // A wider window can move the board without resizing any of these boxes.
+              addEventListener('resize', resized);
+            } catch {
+              end();
+            }
+          };
+          holding = setTimeout(() => {
+            holding = undefined;
+            start();
+          }, hold);
         };
       })();
     </script>
@@ -223,7 +231,6 @@
         return [
           ...flights,
           overlay.animate({ backgroundColor: ['#070f20', 'rgb(7 15 32 / 0)'] }, { duration: 450, easing: 'ease-in', fill: 'forwards' }),
-          fadeOut($launch('name'), 0, 150),
           fadeOut($launch('tile'), 0, 250),
           // The queen's field flares across the board as it fades.
           $launch('field').animate({ opacity: [1, 0], transform: ['none', 'scale(2.2)'] }, { duration: 400, easing: 'ease-out', fill: 'forwards' }),
@@ -263,7 +270,6 @@
       <g transform="translate(256 254) scale(0.95)" fill="#0b1730"><path d="M-36-23-18-8 0-33 18-8 36-23 27 19H-27Z"/><rect x="-26" y="27" width="52" height="8" rx="4"/></g>
     </g></svg>
   </div>
-  <span id="launch-name">Chess Domination</span>
 </div>
 <div class="app" id="app">
 <header id="topbar"><div class="brand"><img src="favicons/icon.svg" alt=""><h1>Domination</h1></div><div class="header-actions">
