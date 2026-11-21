@@ -178,20 +178,30 @@
               end();
             }
           };
-          // Chrome fades its own launch screen out over about 300 ms after the first paint. The copy holds
-          // still under it until then, so the icon never shows twice; a game ready later starts at once.
+          // Chrome fades its own launch screen out over about 300 ms once the page has painted content and
+          // its compositor has drawn it. The copy holds still under it until then, plus a frame or so for that
+          // draw, so the icon never shows twice; a game ready later starts at once.
           holding = true;
           const go = () => {
             if (!holding) return;
             holding = false;
             start();
           };
-          const after = (time) => setTimeout(go, Math.ceil(Math.max(0, time + 300 - performance.now())));
+          const after = (time) => setTimeout(go, Math.ceil(Math.max(0, time + 350 - performance.now())));
           if (PerformanceObserver.supportedEntryTypes?.includes('paint')) {
-            // Buffered, so it reports a paint that already happened as well as one still to come.
-            const painted = new PerformanceObserver((list) => {
+            // Buffered, so it reports a paint that already happened as well as one still to come. A paint
+            // report that never comes (a window sent to the background before it painted) waits no longer
+            // than a full hold.
+            const late = setTimeout(() => {
               painted.disconnect();
-              after(Math.min(...list.getEntries().map((entry) => entry.startTime)));
+              go();
+            }, 350);
+            const painted = new PerformanceObserver((list) => {
+              const contentful = list.getEntriesByName('first-contentful-paint')[0];
+              if (!contentful) return;
+              painted.disconnect();
+              clearTimeout(late);
+              after(contentful.startTime);
             });
             painted.observe({ type: 'paint', buffered: true });
           } else {

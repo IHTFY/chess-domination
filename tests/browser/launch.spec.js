@@ -64,9 +64,21 @@ test('a tap during an installed launch only skips it', async ({ page }) => {
   expect(await page.evaluate(() => document.getElementById('board').shadowRoot.querySelector('[data-square="a1"]').getAnimations().length)).toBe(0);
 });
 
-test('the exit waits under Chrome\'s fading launch screen until 300 ms after the first paint', async ({ page }) => {
+test('the exit waits under Chrome\'s fading launch screen until 350 ms after the first contentful paint', async ({ page }) => {
   await page.addInitScript(installed);
   await page.addInitScript(() => {
+    // The game is ready first, and the page reports its contentful paint only when the exit asks for it,
+    // so an exit that didn't hold would start at once.
+    window.PerformanceObserver = class {
+      static supportedEntryTypes = ['paint'];
+      constructor(callback) { this.callback = callback; }
+      observe() {
+        window.painted = performance.now();
+        const entries = [{ name: 'first-paint', startTime: window.painted }, { name: 'first-contentful-paint', startTime: window.painted }];
+        queueMicrotask(() => this.callback({ getEntriesByName: name => entries.filter(entry => entry.name === name) }));
+      }
+      disconnect() {}
+    };
     const animate = Element.prototype.animate;
     Element.prototype.animate = function (keyframes, options) {
       if (this.id === 'launch-grid') window.exitStarted ??= performance.now();
@@ -75,11 +87,29 @@ test('the exit waits under Chrome\'s fading launch screen until 300 ms after the
   });
   await page.goto('/');
   await page.waitForFunction(() => window.exitStarted);
-  const { started, paint } = await page.evaluate(() => ({
-    started: window.exitStarted,
-    paint: performance.getEntriesByName('first-paint')[0].startTime,
-  }));
-  expect(started).toBeGreaterThanOrEqual(paint + 300);
+  const { started, painted } = await page.evaluate(() => ({ started: window.exitStarted, painted: window.painted }));
+  expect(started).toBeGreaterThanOrEqual(painted + 350);
+});
+
+test('a paint report that never comes holds the copy no longer than a full hold', async ({ page }) => {
+  await page.addInitScript(installed);
+  await page.addInitScript(() => {
+    window.PerformanceObserver = class {
+      static supportedEntryTypes = ['paint'];
+      observe() { window.observed = performance.now(); }
+      disconnect() {}
+    };
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (keyframes, options) {
+      if (this.id === 'launch-grid') window.exitStarted ??= performance.now();
+      return animate.call(this, keyframes, options);
+    };
+  });
+  await page.goto('/');
+  await page.waitForFunction(() => window.exitStarted, null, { timeout: 2000 });
+  const { started, observed } = await page.evaluate(() => ({ started: window.exitStarted, observed: window.observed }));
+  expect(started).toBeGreaterThanOrEqual(observed + 350);
+  expect(started).toBeLessThan(observed + 1000);
 });
 
 test('a tap while the launch screen holds ends it without playing the exit', async ({ page }) => {
