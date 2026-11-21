@@ -97,9 +97,10 @@
           return;
         }
         root.classList.add('launching');
+        // Nothing behind the copy can be reached, even by assistive technology, while it shows.
+        root.inert = true;
         let animations = [];
         let skipped = false;
-        let inert = [];
         let layout;
         const skip = () => {
           skipped = true;
@@ -116,7 +117,9 @@
           removeEventListener('pointerdown', swallow, true);
           removeEventListener('keydown', swallow, true);
           layout?.disconnect();
-          inert.forEach((el) => (el.inert = false));
+          // A stalled exit must not leave squares or pieces hidden once the game takes input.
+          animations.forEach((a) => a.cancel());
+          root.inert = false;
           root.classList.remove('launching');
           document.getElementById('launch')?.remove();
         };
@@ -134,9 +137,11 @@
           clearTimeout(fallback);
           fallback = setTimeout(end, 2000);
           const page = [...document.body.children].filter((el) => el !== overlay);
-          // Nothing behind the copy can be reached, even by assistive technology.
-          inert = page.filter((el) => !el.inert);
-          inert.forEach((el) => (el.inert = true));
+          const box = (el) => {
+            const { x, y, width, height } = el.getBoundingClientRect();
+            return `${x} ${y} ${width} ${height}`;
+          };
+          const boxes = page.map(box);
           try {
             if (!matchMedia('(prefers-reduced-motion: reduce)').matches) animations = play(overlay);
           } catch {
@@ -148,9 +153,7 @@
             }
             Promise.all(animations.map((a) => a.finished)).then(end, end);
             // Targets measured at the start go stale when the layout changes (a turn, the ad rail): skip to the end.
-            // The observer reports every element once on observe; only later reports are changes.
-            let armed = false;
-            layout = new ResizeObserver(() => (armed ? skip() : (armed = true)));
+            layout = new ResizeObserver(() => page.some((el, i) => box(el) !== boxes[i]) && skip());
             page.forEach((el) => layout.observe(el));
           } catch {
             end();
