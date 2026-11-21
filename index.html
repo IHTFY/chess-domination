@@ -96,7 +96,7 @@
         let animations = [];
         let skipped = false;
         let layout;
-        let holding;
+        let holding = false;
         let follow = () => {};
         const resized = () => follow();
         const skip = () => {
@@ -113,7 +113,7 @@
         };
         const end = () => {
           clearTimeout(fallback);
-          clearTimeout(holding);
+          holding = false;
           removeEventListener('pointerdown', swallow, true);
           removeEventListener('keydown', swallow, true);
           layout?.disconnect();
@@ -136,12 +136,8 @@
           if (!overlay || !root.classList.contains('launching')) return;
           // A tap or key while the game was loading: show it at once.
           if (skipped) return end();
-          // Chrome fades its own launch screen out over about 300 ms after the first paint. The copy holds
-          // still under it until then, so the icon never shows twice; a game ready later starts at once.
-          const paint = performance.getEntriesByName('first-paint')[0];
-          const hold = paint ? Math.max(0, paint.startTime + 300 - performance.now()) : 300;
           clearTimeout(fallback);
-          fallback = setTimeout(end, hold + 2000);
+          fallback = setTimeout(end, 2300);
           const start = () => {
             const page = [...document.body.children].filter((el) => el !== overlay);
             const box = (el) => {
@@ -182,10 +178,19 @@
               end();
             }
           };
-          holding = setTimeout(() => {
-            holding = undefined;
+          // Chrome fades its own launch screen out over about 300 ms after the first paint. The copy holds
+          // still under it until then, so the icon never shows twice; a game ready later starts at once.
+          holding = true;
+          const go = () => {
+            if (!holding) return;
+            holding = false;
             start();
-          }, hold);
+          };
+          const paint = () => performance.getEntriesByName('first-paint')[0]?.startTime;
+          const after = (time) => setTimeout(go, Math.max(0, time + 300 - performance.now()));
+          if (paint() !== undefined) after(paint());
+          // Ready before the first paint: measure from that frame once it is painted.
+          else requestAnimationFrame(() => setTimeout(() => after(paint() ?? performance.now())));
         };
       })();
     </script>
