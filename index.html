@@ -54,7 +54,7 @@
     </script>
     <style>
       /* Installed-app launch: the first paint copies Chrome's launch screen (manifest background,
-         maskable icon at 128px, name near the bottom), then launchExit() in scripts/main.js plays
+         maskable icon at 128px, name near the bottom), then launchExit() (the module script below) plays
          the icon's board onto the game's board and its queen into the piece tray. */
       #launch {
         display: none;
@@ -97,38 +97,99 @@
           return;
         }
         root.classList.add('launching');
+        let animations = [];
+        const skip = () => animations.forEach((a) => a.finish());
+        // While the copy shows, a tap, key, or resize only skips it: nothing behind it reacts.
+        const swallow = (event) => {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          skip();
+        };
         const end = () => {
           clearTimeout(fallback);
+          removeEventListener('pointerdown', swallow, true);
+          removeEventListener('keydown', swallow, true);
+          removeEventListener('resize', skip);
           root.classList.remove('launching');
           document.getElementById('launch')?.remove();
         };
-        // The game never stays hidden behind the copy if it fails to call launchExit.
-        const fallback = setTimeout(end, 4000);
+        addEventListener('pointerdown', swallow, true);
+        addEventListener('keydown', swallow, true);
+        addEventListener('resize', skip);
+        // The game never stays hidden behind the copy if launchExit isn't called or its exit fails.
+        let fallback = setTimeout(end, 4000);
         // play(overlay) starts the game's exit and returns its Web Animations.
         window.launchExit = (play) => {
-          clearTimeout(fallback);
           const overlay = document.getElementById('launch');
           // Too late: the fallback already removed the copy.
           if (!overlay) return;
-          let animations = [];
-          if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            try {
-              animations = play(overlay);
-            } catch {
-              animations = [];
+          clearTimeout(fallback);
+          fallback = setTimeout(end, 2000);
+          try {
+            if (!matchMedia('(prefers-reduced-motion: reduce)').matches) animations = play(overlay);
+          } catch {
+            animations = [];
+          }
+          try {
+            if (!animations.length) {
+              animations = [overlay.animate({ opacity: [1, 0] }, { duration: 200, easing: 'ease-out', fill: 'forwards' })];
             }
+            Promise.all(animations.map((a) => a.finished)).then(end, end);
+          } catch {
+            end();
           }
-          if (!animations.length) {
-            animations = [overlay.animate({ opacity: [1, 0] }, { duration: 200, easing: 'ease-out', fill: 'forwards' })];
-          }
-          overlay.addEventListener('pointerdown', () => animations.forEach((a) => a.finish()), { once: true });
-          Promise.all(animations.map((a) => a.finished)).then(end, end);
         };
       })();
     </script>
     <link rel="stylesheet" type="text/css" href="style/global.css" />
 
-    <script defer type="module" src="scripts/main.js"></script>
+    <!-- The game. The launch exit is inline so it always comes with the HTML: a previous service
+         worker can still serve the previous main.js for one visit. The import waits for main.js
+         to render the first screen. -->
+    <script type="module">
+      import './scripts/main.js';
+      const board = document.getElementById('board');
+      // The icon's 5x5 board lands on c2-g6, which share its colors,
+      // the rest of the board builds out ring by ring, and the icon's queen drops into the tray.
+      globalThis.launchExit?.(overlay => {
+        const $launch = name => document.getElementById(`launch-${name}`);
+        const icon = $launch('icon').getBoundingClientRect();
+        const unit = icon.width / 512 * .94;
+        const center = rect => [rect.left + rect.width / 2, rect.top + rect.height / 2];
+        const [x0, y0] = center(icon);
+        const flyTo = (rect, size) => {
+          const [x, y] = center(rect);
+          return `translate(${x - x0}px, ${y - y0}px) scale(${rect.width / (size * unit)})`;
+        };
+        const e4 = board.shadowRoot.querySelector('[data-square="e4"]').getBoundingClientRect();
+        const queen = board.shadowRoot.querySelector('#spare-wQ [part~="piece"]');
+        const colors = getComputedStyle(board);
+        const easing = 'cubic-bezier(.5, 0, .2, 1)';
+        const fadeOut = (el, delay, duration) => el.animate({ opacity: [1, 0] }, { delay, duration, fill: 'forwards' });
+        const fadeIn = (el, delay, duration, transform = 'none') => el.animate(
+          { opacity: [0, 1], transform: [transform, 'none'] }, { delay, duration, easing: 'ease-out', fill: 'backwards' });
+        return [
+          overlay.animate({ backgroundColor: ['#070f20', 'rgb(7 15 32 / 0)'] }, { duration: 450, easing: 'ease-in', fill: 'forwards' }),
+          fadeOut($launch('name'), 0, 150),
+          fadeOut($launch('tile'), 0, 250),
+          // The queen's field flares across the board as it fades.
+          $launch('field').animate({ opacity: [1, 0], transform: ['none', 'scale(2.2)'] }, { duration: 400, easing: 'ease-out', fill: 'forwards' }),
+          $launch('grid').animate({ transform: ['none', flyTo(e4, 58)] }, { duration: 600, easing, fill: 'forwards' }),
+          $launch('light').animate({ fill: ['#31577c', colors.getPropertyValue('--light-color').trim()] }, { duration: 600, fill: 'forwards' }),
+          $launch('dark').animate({ fill: ['#203c60', colors.getPropertyValue('--dark-color').trim()] }, { duration: 600, fill: 'forwards' }),
+          fadeOut($launch('grid'), 600, 150),
+          $launch('queen').animate({ transform: ['none', flyTo(queen.getBoundingClientRect(), 132)] }, { duration: 650, easing, fill: 'forwards' }),
+          fadeOut($launch('queen'), 650, 150),
+          fadeIn(queen, 600, 150),
+          ...[...board.shadowRoot.querySelectorAll('[data-square]')].map(square => {
+            const [file, rank] = square.dataset.square;
+            const ring = Math.max(Math.abs(file.charCodeAt(0) - 101), Math.abs(rank - 4));
+            // c2-g6 sit under the icon's squares and appear as those land.
+            return ring <= 2 ? fadeIn(square, 580, 150) : fadeIn(square, 520 + (ring - 2) * 110, 260, 'scale(.5)');
+          }),
+        ];
+      });
+    </script>
     <script defer type="module" src="scripts/pwa.js"></script>
   </head>
 <body>
