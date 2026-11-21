@@ -52,12 +52,107 @@
         if (found) document.documentElement.classList.add('ad-free');
       })();
     </script>
+    <style>
+      /* Installed-app launch: the first paint copies Chrome's launch screen (manifest background,
+         maskable icon at 128px, name near the bottom), then launchExit() in scripts/main.js plays
+         the icon's board onto the game's board and its queen into the piece tray. */
+      #launch {
+        display: none;
+      }
+      .launching #launch {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: grid;
+        place-items: center;
+        background: #070f20;
+      }
+      #launch-icon {
+        position: relative;
+        width: 128px;
+        height: 128px;
+      }
+      #launch-icon > * {
+        position: absolute;
+        inset: 0;
+      }
+      #launch-name {
+        position: absolute;
+        inset: auto 0 56px;
+        font: 24px/1 Roboto, system-ui, sans-serif;
+        text-align: center;
+        color: rgb(255 255 255 / 0.87);
+      }
+    </style>
+    <script>
+      // Plays once per fresh launch of the installed app: never in a browser tab, on reload, or on return.
+      (() => {
+        const root = document.documentElement;
+        try {
+          const nav = performance.getEntriesByType('navigation')[0];
+          const app = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches;
+          if (!app || nav?.type !== 'navigate' || sessionStorage.getItem('launched')) return;
+          sessionStorage.setItem('launched', '1');
+        } catch {
+          return;
+        }
+        root.classList.add('launching');
+        const end = () => {
+          clearTimeout(fallback);
+          root.classList.remove('launching');
+          document.getElementById('launch')?.remove();
+        };
+        // The game never stays hidden behind the copy if it fails to call launchExit.
+        const fallback = setTimeout(end, 4000);
+        // play(overlay) starts the game's exit and returns its Web Animations.
+        window.launchExit = (play) => {
+          clearTimeout(fallback);
+          const overlay = document.getElementById('launch');
+          // Too late: the fallback already removed the copy.
+          if (!overlay) return;
+          let animations = [];
+          if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            try {
+              animations = play(overlay);
+            } catch {
+              animations = [];
+            }
+          }
+          if (!animations.length) {
+            animations = [overlay.animate({ opacity: [1, 0] }, { duration: 200, easing: 'ease-out', fill: 'forwards' })];
+          }
+          overlay.addEventListener('pointerdown', () => animations.forEach((a) => a.finish()), { once: true });
+          Promise.all(animations.map((a) => a.finished)).then(end, end);
+        };
+      })();
+    </script>
     <link rel="stylesheet" type="text/css" href="style/global.css" />
 
     <script defer type="module" src="scripts/main.js"></script>
     <script defer type="module" src="scripts/pwa.js"></script>
   </head>
 <body>
+<!-- favicons/icon.svg in layers, inset like the maskable icon (tools/generate-icons.js). -->
+<div id="launch" aria-hidden="true">
+  <div id="launch-icon">
+    <svg id="launch-tile" viewBox="0 0 512 512"><rect width="512" height="512" fill="#0b1730"/></svg>
+    <svg id="launch-grid" viewBox="0 0 512 512"><g transform="translate(15.36 15.36) scale(.94)">
+      <g id="launch-light" fill="#31577c"><rect x="114" y="114" width="52" height="52" rx="4"/><rect x="230" y="114" width="52" height="52" rx="4"/><rect x="346" y="114" width="52" height="52" rx="4"/><rect x="172" y="172" width="52" height="52" rx="4"/><rect x="288" y="172" width="52" height="52" rx="4"/><rect x="114" y="230" width="52" height="52" rx="4"/><rect x="230" y="230" width="52" height="52" rx="4"/><rect x="346" y="230" width="52" height="52" rx="4"/><rect x="172" y="288" width="52" height="52" rx="4"/><rect x="288" y="288" width="52" height="52" rx="4"/><rect x="114" y="346" width="52" height="52" rx="4"/><rect x="230" y="346" width="52" height="52" rx="4"/><rect x="346" y="346" width="52" height="52" rx="4"/></g>
+      <g id="launch-dark" fill="#203c60"><rect x="172" y="114" width="52" height="52" rx="4"/><rect x="288" y="114" width="52" height="52" rx="4"/><rect x="114" y="172" width="52" height="52" rx="4"/><rect x="230" y="172" width="52" height="52" rx="4"/><rect x="346" y="172" width="52" height="52" rx="4"/><rect x="172" y="230" width="52" height="52" rx="4"/><rect x="288" y="230" width="52" height="52" rx="4"/><rect x="114" y="288" width="52" height="52" rx="4"/><rect x="230" y="288" width="52" height="52" rx="4"/><rect x="346" y="288" width="52" height="52" rx="4"/><rect x="172" y="346" width="52" height="52" rx="4"/><rect x="288" y="346" width="52" height="52" rx="4"/></g>
+    </g></svg>
+    <svg id="launch-field" viewBox="0 0 512 512"><g transform="translate(15.36 15.36) scale(.94)" fill="#8bd0ff">
+      <circle cx="256" cy="256" r="141" fill="none" stroke="#8bd0ff" stroke-width="9"/>
+      <path d="M140 140 372 372M140 372 372 140M140 256H372M256 140V372" stroke="#8bd0ff" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="140" cy="140" r="11"/><circle cx="372" cy="140" r="11"/><circle cx="140" cy="372" r="11"/><circle cx="372" cy="372" r="11"/>
+    </g></svg>
+    <svg id="launch-queen" viewBox="0 0 512 512"><g transform="translate(15.36 15.36) scale(.94)">
+      <path d="M256 180 332 256 256 332 180 256Z" fill="#0b1730"/>
+      <path d="M256 190 322 256 256 322 190 256Z" fill="#8bd0ff"/>
+      <g transform="translate(256 254) scale(0.95)" fill="#0b1730"><path d="M-36-23-18-8 0-33 18-8 36-23 27 19H-27Z"/><rect x="-26" y="27" width="52" height="8" rx="4"/></g>
+    </g></svg>
+  </div>
+  <span id="launch-name">Chess Domination</span>
+</div>
 <div class="app" id="app">
 <header id="topbar"><div class="brand"><img src="favicons/icon.svg" alt=""><h1>Domination</h1></div><div class="header-actions">
 <button class="icon-button" id="soundSwitch" aria-label="Sound" aria-pressed="false" title="Sound"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4 6 8H3v8h3l5 4V4Zm4 4a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/><path class="sound-slash" d="m3 3 18 18"/></svg></button>

@@ -745,3 +745,44 @@ loadForBuyer();
 syncSound();
 updateStats(board.position);
 decorateBoard();
+
+// Installed-app launch (index.html): the icon's 5x5 board lands on c2-g6, which share its colors,
+// the rest of the board builds out ring by ring, and the icon's queen drops into the tray.
+globalThis.launchExit?.(overlay => {
+  const $launch = name => $(`launch-${name}`);
+  const icon = $launch('icon').getBoundingClientRect();
+  const unit = icon.width / 512 * .94;
+  const center = rect => [rect.left + rect.width / 2, rect.top + rect.height / 2];
+  const [x0, y0] = center(icon);
+  const flyTo = (rect, size) => {
+    const [x, y] = center(rect);
+    return `translate(${x - x0}px, ${y - y0}px) scale(${rect.width / (size * unit)})`;
+  };
+  const e4 = board.shadowRoot.querySelector('[data-square="e4"]').getBoundingClientRect();
+  const queen = board.shadowRoot.querySelector('#spare-wQ [part~="piece"]');
+  const colors = getComputedStyle(board);
+  const easing = 'cubic-bezier(.5, 0, .2, 1)';
+  const fadeOut = (el, delay, duration) => el.animate({ opacity: [1, 0] }, { delay, duration, fill: 'forwards' });
+  const fadeIn = (el, delay, duration, transform = 'none') => el.animate(
+    { opacity: [0, 1], transform: [transform, 'none'] }, { delay, duration, easing: 'ease-out', fill: 'backwards' });
+  return [
+    overlay.animate({ backgroundColor: ['#070f20', 'rgb(7 15 32 / 0)'] }, { duration: 450, easing: 'ease-in', fill: 'forwards' }),
+    fadeOut($launch('name'), 0, 150),
+    fadeOut($launch('tile'), 0, 250),
+    // The queen's field flares across the board as it fades.
+    $launch('field').animate({ opacity: [1, 0], transform: ['none', 'scale(2.2)'] }, { duration: 400, easing: 'ease-out', fill: 'forwards' }),
+    $launch('grid').animate({ transform: ['none', flyTo(e4, 58)] }, { duration: 600, easing, fill: 'forwards' }),
+    $launch('light').animate({ fill: ['#31577c', colors.getPropertyValue('--light-color').trim()] }, { duration: 600, fill: 'forwards' }),
+    $launch('dark').animate({ fill: ['#203c60', colors.getPropertyValue('--dark-color').trim()] }, { duration: 600, fill: 'forwards' }),
+    fadeOut($launch('grid'), 600, 150),
+    $launch('queen').animate({ transform: ['none', flyTo(queen.getBoundingClientRect(), 132)] }, { duration: 650, easing, fill: 'forwards' }),
+    fadeOut($launch('queen'), 650, 150),
+    fadeIn(queen, 600, 150),
+    ...[...board.shadowRoot.querySelectorAll('[data-square]')].map(square => {
+      const [file, rank] = square.dataset.square;
+      const ring = Math.max(Math.abs(file.charCodeAt(0) - 101), Math.abs(rank - 4));
+      // c2-g6 sit under the icon's squares and appear as those land.
+      return ring <= 2 ? fadeIn(square, 580, 150) : fadeIn(square, 520 + (ring - 2) * 110, 260, 'scale(.5)');
+    }),
+  ];
+});
