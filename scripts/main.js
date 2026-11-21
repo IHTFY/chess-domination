@@ -100,10 +100,11 @@ const REFIT_MS = 200;
 // The sizes the results screen offers the loader, largest first (style/global.css).
 const SCREEN_SIZES = ['300x250', '320x100', '320x50'];
 
-// The game over the results screen shows, while it shows; how many boxes it has had; and the
-// request waiting for the window to settle.
+// The game over the results screen shows, while it shows; how many boxes it has had; the sizes
+// already asked for on this visit; and the request waiting for the window to settle.
 let screenKey = null;
 let screenBoxes = 0;
+let screenAsked = new Set();
 let screenTimer;
 let screenAsk = null;
 
@@ -128,8 +129,9 @@ function askOnceSettled(ask) {
 /**
  * Puts a new box on `screen` at the size the stylesheet gives it in this window, or else the first
  * other size the screen can hold beside the result and buttons, and asks for its ad, at once or
- * (`later`) once the window has settled. Where no size fits, the ad is left out, with its label
- * and links.
+ * (`later`) once the window has settled. Each size is asked for once per visit, so a window
+ * turned back and forth doesn't keep asking. Where no size is left that fits, the ad is left out,
+ * with its label and links.
  */
 function placeScreenAd(screen, later) {
   const box = freshBox(screen.querySelector('.ad-box'));
@@ -140,6 +142,7 @@ function placeScreenAd(screen, later) {
   const preferred = sizeOf(box); // Empty where the stylesheet hides the box.
   // The loader's unit keeps the box's size, so the box keeps it too while the window changes.
   const size = SCREEN_SIZES.includes(preferred) && [preferred, ...SCREEN_SIZES].find(candidate => {
+    if (screenAsked.has(candidate)) return false;
     const [width, height] = candidate.split('x');
     Object.assign(box.style, { width: `${width}px`, height: `${height}px`, minHeight: `${height}px` });
     return fits(screen);
@@ -152,8 +155,12 @@ function placeScreenAd(screen, later) {
   box.dataset.adSize = size;
   // The loader places one ad per key, so each later box on this visit gets a key of its own.
   const key = screenBoxes++ ? `${screenKey}/${screenBoxes}` : screenKey;
-  if (later) askOnceSettled(() => showAd(box, key));
-  else showAd(box, key);
+  const ask = () => {
+    screenAsked.add(size);
+    showAd(box, key);
+  };
+  if (later) askOnceSettled(ask);
+  else ask();
 }
 
 /**
@@ -166,6 +173,7 @@ function showScreenAd(name, screen, key) {
   if (name !== AD_SCREEN || document.documentElement.classList.contains('ad-free')) return;
   screenKey = key;
   screenBoxes = 0;
+  screenAsked = new Set();
   placeScreenAd(screen, false);
 }
 
@@ -197,45 +205,39 @@ let playSize = '';
 let playKeys = 0;
 // When the ad beside the board was placed; Infinity while its request is pending.
 let playPlacedAt = -Infinity;
-// A returning rail's request, waiting out the rest of its last ad's minute.
-let playTimer;
 
 // The box's size as the stylesheet sets it, such as "160x600"; empty where the ad doesn't fit.
 const sizeOf = box => (box.offsetWidth ? `${box.offsetWidth}x${box.offsetHeight}` : '');
 
 // The loader won't fill a box twice, so each ad gets a new box. The old one
 // goes even when the new one is hidden, so no ad stays on the page out of view.
-function renewPlayAd(wait = 0) {
-  clearTimeout(playTimer);
+function renewPlayAd(ask = true) {
+  // A request still waiting for the loader can't fill the box that leaves now, so it doesn't count.
+  if (playPlacedAt === Infinity) playPlacedAt = -Infinity;
   const box = playBox.cloneNode(false);
   playBox.replaceWith(box);
   playBox = box;
   playSize = sizeOf(box);
   if (!playSize) return;
   box.dataset.adSize = playSize;
+  if (!ask) return;
+  playPlacedAt = Infinity;
   // The minute starts once the loader has been asked to place the ad; a failed
-  // request frees the next game to try again. A request waiting for its turn
-  // keeps the last ad's time, so the minute still counts from that ad.
-  const ask = () => {
-    playPlacedAt = Infinity;
-    showAd(box, `play/${++playKeys}`).then(placed => {
-      if (box === playBox) playPlacedAt = placed ? Date.now() : -Infinity;
-    });
-  };
-  if (wait > 0) playTimer = setTimeout(ask, wait);
-  else ask();
+  // request frees the next game to try again.
+  showAd(box, `play/${++playKeys}`).then(placed => {
+    if (box === playBox) playPlacedAt = placed ? Date.now() : -Infinity;
+  });
 }
 
 /**
  * Gives the ad beside the board a new box when the stylesheet has changed its size: the window
  * crossed into another ad size, or the results screen hid the rail or brought it back. A rail
- * brought back by the results closing (`afterResults`) asks for its ad only once the last one
- * has had its minute, as a new game does.
+ * brought back by the results closing (`afterResults`) gets an ad only if the last one has had
+ * its minute; otherwise its box stays empty until a new game asks (newPlayAd).
  */
 function fitPlayAd(afterResults = false) {
   if (!playBox || sizeOf(playBox) === playSize) return;
-  const left = playPlacedAt + PLAY_AD_MIN_MS - Date.now();
-  renewPlayAd(afterResults && Number.isFinite(left) ? left : 0);
+  renewPlayAd(!afterResults || Date.now() - playPlacedAt >= PLAY_AD_MIN_MS);
 }
 
 /** Fills `box`, beside the board, after the first tap or key press, and again whenever the window crosses into another ad size. */
