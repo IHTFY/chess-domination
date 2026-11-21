@@ -485,6 +485,28 @@ test('turning a window back and forth asks for each results size at most once pe
   assert.equal(results.box.dataset.adSize, '300x250');
 });
 
+test('a results size whose request couldn\'t go out offline can be asked for again on the same visit', async () => {
+  document.documentElement.classList.delete('ad-free');
+  online = false;
+  railSize = [320, 50];
+  const { showScreenAd, refitScreenAd } = await loadAds();
+  const results = screen();
+  showScreenAd('results', results, 'a');
+  await tick();
+  assert.equal(added.length, 0);
+  fitsSizes = [];
+  refitScreenAd(results);
+  await settle();
+  online = true;
+  fitsSizes = undefined;
+  refitScreenAd(results);
+  assert.equal(results.box.dataset.adSize, '320x50');
+  await settle();
+  added[0].fire('load');
+  await tick();
+  assert.deepEqual(shown.map(([shownBox, key]) => [shownBox.dataset.adSize, key]), [['320x50', 'a/2']]);
+});
+
 test('a window still being dragged waits until it holds still before asking for the new box', async () => {
   document.documentElement.classList.delete('ad-free');
   railSize = [300, 250];

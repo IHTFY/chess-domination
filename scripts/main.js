@@ -155,10 +155,11 @@ function placeScreenAd(screen, later) {
   box.dataset.adSize = size;
   // The loader places one ad per key, so each later box on this visit gets a key of its own.
   const key = screenBoxes++ ? `${screenKey}/${screenBoxes}` : screenKey;
-  const ask = () => {
-    screenAsked.add(size);
-    showAd(box, key);
-  };
+  // A request that couldn't go out (offline, or the loader failed) leaves the size free to try again.
+  const asked = screenAsked;
+  const ask = () => showAd(box, key).then(placed => {
+    if (placed) asked.add(size);
+  });
   if (later) askOnceSettled(ask);
   else ask();
 }
