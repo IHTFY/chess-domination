@@ -91,7 +91,7 @@ test('the exit waits under Chrome\'s fading launch screen until 350 ms after the
   expect(started).toBeGreaterThanOrEqual(painted + 350);
 });
 
-test('a paint report that never comes holds the copy no longer than a second', async ({ page }) => {
+test('a paint report that never comes shows the game after a second without the exit', async ({ page }) => {
   await page.addInitScript(installed);
   await page.addInitScript(() => {
     window.PerformanceObserver = class {
@@ -104,17 +104,24 @@ test('a paint report that never comes holds the copy no longer than a second', a
       get: () => exit,
       set: fn => { exit = (...args) => { window.exitCalled = performance.now(); return fn(...args); }; },
     });
+    new MutationObserver(() => {
+      if (window.exitCalled && !document.getElementById('launch')) window.shown ??= performance.now();
+    }).observe(document, { childList: true, subtree: true });
     const animate = Element.prototype.animate;
     Element.prototype.animate = function (keyframes, options) {
-      if (this.id === 'launch-grid') window.exitStarted ??= performance.now();
+      if (this.id === 'launch-grid') window.exitPlayed = true;
       return animate.call(this, keyframes, options);
     };
   });
   await page.goto('/');
-  await page.waitForFunction(() => window.exitStarted, null, { timeout: 3000 });
-  const { started, called } = await page.evaluate(() => ({ started: window.exitStarted, called: window.exitCalled }));
-  expect(started).toBeGreaterThanOrEqual(called + 1000);
-  expect(started).toBeLessThan(called + 1500);
+  await page.waitForFunction(() => window.shown, null, { timeout: 3000 });
+  const { shown, called, played, inert } = await page.evaluate(() => ({
+    shown: window.shown, called: window.exitCalled, played: window.exitPlayed, inert: document.documentElement.inert,
+  }));
+  expect(shown).toBeGreaterThanOrEqual(called + 1000);
+  expect(shown).toBeLessThan(called + 1500);
+  expect(played).toBeUndefined();
+  expect(inert).toBe(false);
 });
 
 test('a tap while the launch screen holds ends it without playing the exit', async ({ page }) => {
