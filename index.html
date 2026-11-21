@@ -52,12 +52,219 @@
         if (found) document.documentElement.classList.add('ad-free');
       })();
     </script>
+    <style>
+      /* Installed-app launch: the first paint copies Chrome's launch screen (manifest background,
+         maskable icon at 128px, name near the bottom), then launchExit() (the module script below) plays
+         the icon's board onto the game's board and its queen into the piece tray. */
+      #launch {
+        display: none;
+      }
+      .launching #launch {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: grid;
+        place-items: center;
+        background: #070f20;
+      }
+      #launch-icon {
+        position: relative;
+        width: 128px;
+        height: 128px;
+      }
+      #launch-icon > * {
+        position: absolute;
+        inset: 0;
+      }
+      #launch-name {
+        position: absolute;
+        inset: auto 0 56px;
+        font: 24px/1 Roboto, system-ui, sans-serif;
+        text-align: center;
+        color: rgb(255 255 255 / 0.87);
+      }
+    </style>
+    <script>
+      // Plays once per fresh launch of the installed app: never in a browser tab, on reload, or on return.
+      (() => {
+        const root = document.documentElement;
+        try {
+          const nav = performance.getEntriesByType('navigation')[0];
+          const app = matchMedia('(display-mode: standalone)').matches;
+          if (!app || nav?.type !== 'navigate' || sessionStorage.getItem('launched')) return;
+          sessionStorage.setItem('launched', '1');
+        } catch {
+          return;
+        }
+        root.classList.add('launching');
+        // Nothing behind the copy can be reached, even by assistive technology, while it shows.
+        root.inert = true;
+        let animations = [];
+        let skipped = false;
+        let layout;
+        let follow = () => {};
+        const resized = () => follow();
+        const skip = () => {
+          skipped = true;
+          animations.forEach((a) => a.finish());
+        };
+        // While the copy shows, a tap or key only skips it: nothing behind it reacts.
+        const swallow = (event) => {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          skip();
+        };
+        const end = () => {
+          clearTimeout(fallback);
+          removeEventListener('pointerdown', swallow, true);
+          removeEventListener('keydown', swallow, true);
+          layout?.disconnect();
+          removeEventListener('resize', resized);
+          // A stalled exit must not leave squares or pieces hidden once the game takes input.
+          animations.forEach((a) => a.cancel());
+          root.inert = false;
+          root.classList.remove('launching');
+          document.getElementById('launch')?.remove();
+        };
+        addEventListener('pointerdown', swallow, true);
+        addEventListener('keydown', swallow, true);
+        // The game never stays hidden behind the copy if launchExit isn't called or its exit fails.
+        let fallback = setTimeout(end, 4000);
+        // play(overlay) starts the game's exit and returns its Web Animations.
+        // aim() points them at the game's targets again after a layout change; without it, the exit skips to the end.
+        window.launchExit = (play, aim) => {
+          const overlay = document.getElementById('launch');
+          // Too late: the fallback already removed the copy.
+          if (!overlay || !root.classList.contains('launching')) return;
+          // A tap or key while the game was loading: show it at once.
+          if (skipped) return end();
+          clearTimeout(fallback);
+          fallback = setTimeout(end, 2000);
+          const page = [...document.body.children].filter((el) => el !== overlay);
+          const box = (el) => {
+            const { x, y, width, height } = el.getBoundingClientRect();
+            return `${x} ${y} ${width} ${height}`;
+          };
+          let boxes = page.map(box).join();
+          try {
+            if (!matchMedia('(prefers-reduced-motion: reduce)').matches) animations = play(overlay);
+          } catch {
+            animations = [];
+          }
+          try {
+            if (animations.length) {
+              // Targets measured at the start go stale when the layout changes: on a cold start Chrome's
+              // window grows as its splash leaves, and a turn or the ad rail moves the board.
+              follow = () => {
+                try {
+                  aim ? aim() : skip();
+                } catch {
+                  skip();
+                }
+              };
+            } else {
+              animations = [overlay.animate({ opacity: [1, 0] }, { duration: 200, easing: 'ease-out', fill: 'forwards' })];
+            }
+            Promise.all(animations.map((a) => a.finished)).then(end, end);
+            // The observer reports every element once on observe, so only a changed box counts.
+            layout = new ResizeObserver(() => {
+              const now = page.map(box).join();
+              if (now !== boxes) follow();
+              boxes = now;
+            });
+            page.forEach((el) => layout.observe(el));
+            // A wider window can move the board without resizing any of these boxes.
+            addEventListener('resize', resized);
+          } catch {
+            end();
+          }
+        };
+      })();
+    </script>
     <link rel="stylesheet" type="text/css" href="style/global.css" />
 
-    <script defer type="module" src="scripts/main.js"></script>
+    <!-- The game. The launch exit is inline so it always comes with the HTML: a previous service
+         worker can still serve the previous main.js for one visit. The import waits for main.js
+         to render the first screen. -->
+    <script type="module">
+      import './scripts/main.js';
+      const board = document.getElementById('board');
+      // The icon's 5x5 board lands on c2-g6, which share its colors,
+      // the rest of the board builds out ring by ring, and the icon's queen drops into the tray.
+      const $launch = name => document.getElementById(`launch-${name}`);
+      const queen = board.shadowRoot.querySelector('#spare-wQ [part~="piece"]');
+      let flights = [];
+      // Points the icon's board and queen at where e4 and the tray queen are now.
+      const aim = () => {
+        const icon = $launch('icon').getBoundingClientRect();
+        const unit = icon.width / 512 * .94;
+        const center = rect => [rect.left + rect.width / 2, rect.top + rect.height / 2];
+        const [x0, y0] = center(icon);
+        const flyTo = (el, size) => {
+          const rect = el.getBoundingClientRect();
+          const [x, y] = center(rect);
+          return `translate(${x - x0}px, ${y - y0}px) scale(${rect.width / (size * unit)})`;
+        };
+        const [grid, queenFlight] = flights;
+        grid.effect.setKeyframes({ transform: ['none', flyTo(board.shadowRoot.querySelector('[data-square="e4"]'), 58)] });
+        queenFlight.effect.setKeyframes({ transform: ['none', flyTo(queen, 132)] });
+      };
+      globalThis.launchExit?.(overlay => {
+        const colors = getComputedStyle(board);
+        const easing = 'cubic-bezier(.5, 0, .2, 1)';
+        const fadeOut = (el, delay, duration) => el.animate({ opacity: [1, 0] }, { delay, duration, fill: 'forwards' });
+        const fadeIn = (el, delay, duration, transform = 'none') => el.animate(
+          { opacity: [0, 1], transform: [transform, 'none'] }, { delay, duration, easing: 'ease-out', fill: 'backwards' });
+        flights = [
+          $launch('grid').animate(null, { duration: 600, easing, fill: 'forwards' }),
+          $launch('queen').animate(null, { duration: 650, easing, fill: 'forwards' }),
+        ];
+        aim();
+        return [
+          ...flights,
+          overlay.animate({ backgroundColor: ['#070f20', 'rgb(7 15 32 / 0)'] }, { duration: 450, easing: 'ease-in', fill: 'forwards' }),
+          fadeOut($launch('name'), 0, 150),
+          fadeOut($launch('tile'), 0, 250),
+          // The queen's field flares across the board as it fades.
+          $launch('field').animate({ opacity: [1, 0], transform: ['none', 'scale(2.2)'] }, { duration: 400, easing: 'ease-out', fill: 'forwards' }),
+          $launch('light').animate({ fill: ['#31577c', colors.getPropertyValue('--light-color').trim()] }, { duration: 600, fill: 'forwards' }),
+          $launch('dark').animate({ fill: ['#203c60', colors.getPropertyValue('--dark-color').trim()] }, { duration: 600, fill: 'forwards' }),
+          fadeOut($launch('grid'), 600, 150),
+          fadeOut($launch('queen'), 650, 150),
+          fadeIn(queen, 600, 150),
+          ...[...board.shadowRoot.querySelectorAll('[data-square]')].map(square => {
+            const [file, rank] = square.dataset.square;
+            const ring = Math.max(Math.abs(file.charCodeAt(0) - 101), Math.abs(rank - 4));
+            // c2-g6 sit under the icon's squares and appear as those land.
+            return ring <= 2 ? fadeIn(square, 580, 150) : fadeIn(square, 520 + (ring - 2) * 110, 260, 'scale(.5)');
+          }),
+        ];
+      }, aim);
+    </script>
     <script defer type="module" src="scripts/pwa.js"></script>
   </head>
 <body>
+<!-- favicons/icon.svg in layers, inset like the maskable icon (tools/generate-icons.js). -->
+<div id="launch" aria-hidden="true">
+  <div id="launch-icon">
+    <svg id="launch-tile" viewBox="0 0 512 512"><rect width="512" height="512" fill="#0b1730"/></svg>
+    <svg id="launch-grid" viewBox="0 0 512 512"><g transform="translate(15.36 15.36) scale(.94)">
+      <g id="launch-light" fill="#31577c"><rect x="114" y="114" width="52" height="52" rx="4"/><rect x="230" y="114" width="52" height="52" rx="4"/><rect x="346" y="114" width="52" height="52" rx="4"/><rect x="172" y="172" width="52" height="52" rx="4"/><rect x="288" y="172" width="52" height="52" rx="4"/><rect x="114" y="230" width="52" height="52" rx="4"/><rect x="230" y="230" width="52" height="52" rx="4"/><rect x="346" y="230" width="52" height="52" rx="4"/><rect x="172" y="288" width="52" height="52" rx="4"/><rect x="288" y="288" width="52" height="52" rx="4"/><rect x="114" y="346" width="52" height="52" rx="4"/><rect x="230" y="346" width="52" height="52" rx="4"/><rect x="346" y="346" width="52" height="52" rx="4"/></g>
+      <g id="launch-dark" fill="#203c60"><rect x="172" y="114" width="52" height="52" rx="4"/><rect x="288" y="114" width="52" height="52" rx="4"/><rect x="114" y="172" width="52" height="52" rx="4"/><rect x="230" y="172" width="52" height="52" rx="4"/><rect x="346" y="172" width="52" height="52" rx="4"/><rect x="172" y="230" width="52" height="52" rx="4"/><rect x="288" y="230" width="52" height="52" rx="4"/><rect x="114" y="288" width="52" height="52" rx="4"/><rect x="230" y="288" width="52" height="52" rx="4"/><rect x="346" y="288" width="52" height="52" rx="4"/><rect x="172" y="346" width="52" height="52" rx="4"/><rect x="288" y="346" width="52" height="52" rx="4"/></g>
+    </g></svg>
+    <svg id="launch-field" viewBox="0 0 512 512"><g transform="translate(15.36 15.36) scale(.94)" fill="#8bd0ff">
+      <circle cx="256" cy="256" r="141" fill="none" stroke="#8bd0ff" stroke-width="9"/>
+      <path d="M140 140 372 372M140 372 372 140M140 256H372M256 140V372" stroke="#8bd0ff" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="140" cy="140" r="11"/><circle cx="372" cy="140" r="11"/><circle cx="140" cy="372" r="11"/><circle cx="372" cy="372" r="11"/>
+    </g></svg>
+    <svg id="launch-queen" viewBox="0 0 512 512"><g transform="translate(15.36 15.36) scale(.94)">
+      <path d="M256 180 332 256 256 332 180 256Z" fill="#0b1730"/>
+      <path d="M256 190 322 256 256 322 190 256Z" fill="#8bd0ff"/>
+      <g transform="translate(256 254) scale(0.95)" fill="#0b1730"><path d="M-36-23-18-8 0-33 18-8 36-23 27 19H-27Z"/><rect x="-26" y="27" width="52" height="8" rx="4"/></g>
+    </g></svg>
+  </div>
+  <span id="launch-name">Chess Domination</span>
+</div>
 <div class="app" id="app">
 <header id="topbar"><div class="brand"><img src="favicons/icon.svg" alt=""><h1>Domination</h1></div><div class="header-actions">
 <button class="icon-button" id="soundSwitch" aria-label="Sound" aria-pressed="false" title="Sound"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4 6 8H3v8h3l5 4V4Zm4 4a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/><path class="sound-slash" d="m3 3 18 18"/></svg></button>
