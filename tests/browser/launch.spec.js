@@ -86,9 +86,8 @@ test('a tap while the launch screen holds ends it without playing the exit', asy
   await page.addInitScript(installed);
   await page.addInitScript(slow);
   await page.addInitScript(() => {
-    // Without a first-paint entry the copy holds a full 300 ms, slowed here to 3 s.
-    const entries = performance.getEntriesByName.bind(performance);
-    performance.getEntriesByName = name => name === 'first-paint' ? [] : entries(name);
+    // Without paint timing the copy holds a full 300 ms, slowed here to 3 s.
+    Object.defineProperty(PerformanceObserver, 'supportedEntryTypes', { value: [] });
     let exit;
     Object.defineProperty(window, 'launchExit', {
       get: () => exit,

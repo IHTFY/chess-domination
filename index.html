@@ -186,11 +186,17 @@
             holding = false;
             start();
           };
-          const paint = () => performance.getEntriesByName('first-paint')[0]?.startTime;
-          const after = (time) => setTimeout(go, Math.max(0, time + 300 - performance.now()));
-          if (paint() !== undefined) after(paint());
-          // Ready before the first paint: measure from that frame once it is painted.
-          else requestAnimationFrame(() => setTimeout(() => after(paint() ?? performance.now())));
+          const after = (time) => setTimeout(go, Math.ceil(Math.max(0, time + 300 - performance.now())));
+          if (PerformanceObserver.supportedEntryTypes?.includes('paint')) {
+            // Buffered, so it reports a paint that already happened as well as one still to come.
+            const painted = new PerformanceObserver((list) => {
+              painted.disconnect();
+              after(Math.min(...list.getEntries().map((entry) => entry.startTime)));
+            });
+            painted.observe({ type: 'paint', buffered: true });
+          } else {
+            after(performance.now());
+          }
         };
       })();
     </script>
