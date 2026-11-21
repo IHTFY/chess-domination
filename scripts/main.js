@@ -65,12 +65,17 @@ function loadForBuyer() {
   if (mayBeAdFree()) load().catch(() => {});
 }
 
-/** Fills `box` with an ad for the game over named `key`; offline or on failure it stays empty. Resolves to whether the loader was asked to place it. */
+/**
+ * Fills `box` with an ad for the game over named `key`; offline, on failure, or when the box isn't
+ * showing once the loader has arrived, it stays empty. Resolves to whether the loader was asked to place it.
+ */
 function showAd(box, key) {
   if (!navigator.onLine) return Promise.resolve(false);
   return load().then(
     () => {
-      if (!box.isConnected) return false;
+      // Off the page or hidden by the stylesheet, the box has no width. The loader itself checks
+      // only that the box is on the page, so a box that stops showing is also swapped out (freshBox).
+      if (!box.offsetWidth) return false;
       window.ihtfyAds.show(box, key);
       return true;
     },
@@ -88,6 +93,77 @@ function freshBox(box) {
   return next;
 }
 
+// A window that changes size (a phone turning, a desktop window dragged) asks for the results
+// screen's next ad once it has held still this long, so one turn or drag asks once.
+const REFIT_MS = 200;
+
+// The sizes the results screen offers the loader, largest first (style/global.css).
+const SCREEN_SIZES = ['300x250', '320x100', '320x50'];
+
+// The game over the results screen shows, while it shows; how many boxes it has had; the sizes
+// already asked for on this visit; and the request waiting for the window to settle.
+let screenKey = null;
+let screenBoxes = 0;
+let screenAsked = new Set();
+let screenTimer;
+let screenAsk = null;
+
+// Whether the result, the box and the buttons all show without scrolling the screen.
+const fits = screen => screen.scrollHeight <= screen.clientHeight && screen.scrollWidth <= screen.clientWidth;
+
+function cancelScreenAsk() {
+  clearTimeout(screenTimer);
+  screenAsk = null;
+}
+
+/** Runs `ask` once the window has held still for REFIT_MS; another call before then starts the wait again. */
+function askOnceSettled(ask) {
+  cancelScreenAsk();
+  screenAsk = ask;
+  screenTimer = setTimeout(() => {
+    screenAsk = null;
+    ask();
+  }, REFIT_MS);
+}
+
+/**
+ * Puts a new box on `screen` at the size the stylesheet gives it in this window, or else the first
+ * other size the screen can hold beside the result and buttons, and asks for its ad, at once or
+ * (`later`) once the window has settled. Each size is asked for once per visit, so a window
+ * turned back and forth doesn't keep asking. Where no size is left that fits, the ad is left out,
+ * with its label and links.
+ */
+function placeScreenAd(screen, later) {
+  const box = freshBox(screen.querySelector('.ad-box'));
+  box.removeAttribute('style'); // The last box's size.
+  delete box.dataset.adSize;
+  screen.classList.remove('ad-left-out');
+  cancelScreenAsk();
+  const preferred = sizeOf(box); // Empty where the stylesheet hides the box.
+  // The loader's unit keeps the box's size, so the box keeps it too while the window changes.
+  const size = SCREEN_SIZES.includes(preferred) && [preferred, ...SCREEN_SIZES].find(candidate => {
+    if (screenAsked.has(candidate)) return false;
+    const [width, height] = candidate.split('x');
+    Object.assign(box.style, { width: `${width}px`, height: `${height}px`, minHeight: `${height}px` });
+    return fits(screen);
+  });
+  if (!size) {
+    box.removeAttribute('style');
+    screen.classList.add('ad-left-out');
+    return;
+  }
+  box.dataset.adSize = size;
+  // The loader places one ad per key, so each later box on this visit gets a key of its own.
+  const key = screenBoxes++ ? `${screenKey}/${screenBoxes}` : screenKey;
+  // A request that couldn't go out (offline, or the loader failed) leaves the size free to try again.
+  const asked = screenAsked;
+  const ask = () => showAd(box, key).then(placed => {
+    if (placed) asked.add(size);
+  });
+  if (later) askOnceSettled(ask);
+  else ask();
+}
+
 /**
  * Puts a new box on the screen named `name` (whose element is `screen`, already
  * showing, so the stylesheet has sized the box) and fills it for the game over
@@ -96,19 +172,27 @@ function freshBox(box) {
  */
 function showScreenAd(name, screen, key) {
   if (name !== AD_SCREEN || document.documentElement.classList.contains('ad-free')) return;
-  const box = freshBox(screen.querySelector('.ad-box'));
-  box.removeAttribute('style'); // The last ad's size, kept for its own screen visit.
-  const size = sizeOf(box);
-  if (!size) return;
-  box.dataset.adSize = size;
-  // The loader's unit keeps this size, so the box does too if the window turns before the screen closes.
-  const [width, height] = size.split('x');
-  Object.assign(box.style, { width: `${width}px`, height: `${height}px`, minHeight: `${height}px` });
-  showAd(box, key);
+  screenKey = key;
+  screenBoxes = 0;
+  screenAsked = new Set();
+  placeScreenAd(screen, false);
+}
+
+/**
+ * After the window changes size: an ad that no longer fits `screen` (a phone turned on its side)
+ * gives way at once to a box the screen can hold, or to none. One that still fits stays, and if
+ * its request is still waiting, the wait starts again.
+ */
+function refitScreenAd(screen) {
+  if (screenKey === null) return;
+  if (screen.classList.contains('ad-left-out') || !fits(screen)) placeScreenAd(screen, true);
+  else if (screenAsk) askOnceSettled(screenAsk);
 }
 
 /** Swaps the box on a screen that is going away for an empty one, so no ad stays on the page out of view. */
 function clearScreenAd(screen) {
+  screenKey = null;
+  cancelScreenAsk();
   freshBox(screen.querySelector('.ad-box'));
 }
 
@@ -128,13 +212,16 @@ const sizeOf = box => (box.offsetWidth ? `${box.offsetWidth}x${box.offsetHeight}
 
 // The loader won't fill a box twice, so each ad gets a new box. The old one
 // goes even when the new one is hidden, so no ad stays on the page out of view.
-function renewPlayAd() {
+function renewPlayAd(ask = true) {
+  // A request still waiting for the loader can't fill the box that leaves now, so it doesn't count.
+  if (playPlacedAt === Infinity) playPlacedAt = -Infinity;
   const box = playBox.cloneNode(false);
   playBox.replaceWith(box);
   playBox = box;
   playSize = sizeOf(box);
   if (!playSize) return;
   box.dataset.adSize = playSize;
+  if (!ask) return;
   playPlacedAt = Infinity;
   // The minute starts once the loader has been asked to place the ad; a failed
   // request frees the next game to try again.
@@ -143,15 +230,24 @@ function renewPlayAd() {
   });
 }
 
+/**
+ * Gives the ad beside the board a new box when the stylesheet has changed its size: the window
+ * crossed into another ad size, or the results screen hid the rail or brought it back. A rail
+ * brought back by the results closing (`afterResults`) gets an ad only if the last one has had
+ * its minute; otherwise its box stays empty until a new game asks (newPlayAd).
+ */
+function fitPlayAd(afterResults = false) {
+  if (!playBox || sizeOf(playBox) === playSize) return;
+  renewPlayAd(!afterResults || Date.now() - playPlacedAt >= PLAY_AD_MIN_MS);
+}
+
 /** Fills `box`, beside the board, after the first tap or key press, and again whenever the window crosses into another ad size. */
 function startPlayAd(box) {
   box.dataset.adSlot = PLAY_AD_SLOT;
   firstInput.then(() => {
     playBox = box;
     renewPlayAd();
-    addEventListener('resize', () => {
-      if (sizeOf(playBox) !== playSize) renewPlayAd();
-    });
+    addEventListener('resize', () => fitPlayAd());
   });
 }
 
@@ -424,12 +520,14 @@ const results = $('solvedPanel');
 let focusBeforeResults = null;
 
 // The results replace the board and its controls, so the ad has no pop-up or backdrop around it
-// and nothing to cover it. The header buttons and the update toast are out of sight meanwhile.
+// and nothing to cover it. The header buttons, the update toast and the ad beside the board are
+// out of sight meanwhile.
 function openResults(key) {
   focusBeforeResults = board.shadowRoot?.activeElement ?? document.activeElement;
   document.querySelector('.layout').hidden = true;
   results.hidden = false;
   $('app').classList.add('on-results');
+  fitPlayAd();
   showScreenAd(AD_SCREEN, results, key);
   $('playAgainBtn').focus();
 }
@@ -440,8 +538,11 @@ function closeResults() {
   results.hidden = true;
   document.querySelector('.layout').hidden = false;
   $('app').classList.remove('on-results');
+  fitPlayAd(true);
   focusBeforeResults?.focus();
 }
+
+addEventListener('resize', () => refitScreenAd(results));
 
 board.addEventListener('change', event => {
   playSound(clicks[soundIndex++ % clicks.length]);

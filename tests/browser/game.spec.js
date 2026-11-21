@@ -266,8 +266,9 @@ test('a solved board opens the results screen once per solve; examples and first
 
 // Each box as the loader fills it: a fixed-size unit of the size asked for.
 const fillingLoader = 'window.ihtfyAds = { show(box) { const [w, h] = box.dataset.adSize.split("x"); const ad = document.createElement("ins"); ad.style.cssText = `display:inline-block;width:${w}px;height:${h}px`; box.append(ad); (window.__shown ??= []).push(box.dataset.adSize); } };';
-const resultsCases = [[360, 640], [390, 750], [412, 800], [1280, 800], [375, 560], [360, 400]];
-for (const [width, height] of resultsCases) {
+// A third entry is the size a window too short for the stylesheet's size steps down to.
+const resultsCases = [[360, 640], [390, 750], [412, 800], [1280, 800], [375, 560], [360, 400], [1440, 620, '320x100']];
+for (const [width, height, smaller] of resultsCases) {
   test(`at ${width}x${height} the results ad is in view, clear of every control, and does not shift the screen`, async ({ page }) => {
     await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: fillingLoader }));
     await page.setViewportSize({ width, height });
@@ -291,7 +292,7 @@ for (const [width, height] of resultsCases) {
     await expect.poll(() => page.evaluate(() => window.__shown)).toEqual([before.size]);
     const after = await measure();
     expect(after).toEqual(before);
-    expect(before.size).toBe(height >= 576 ? '300x250' : height >= 425 ? '320x100' : '320x50');
+    expect(before.size).toBe(smaller ?? (height >= 576 ? '300x250' : height >= 425 ? '320x100' : '320x50'));
     expect(before.inView).toBe(true);
     expect(before.scroll).toEqual([width, height]);
     expect(before.controls).toBeGreaterThanOrEqual(3);
@@ -299,28 +300,73 @@ for (const [width, height] of resultsCases) {
   });
 }
 
-test('turning the phone while the results show keeps the box at the size of its ad', async ({ page }) => {
+// Where the results ad and the screen's text and buttons are, and whether the screen holds them all without scrolling.
+const resultsLayout = page => page.evaluate(() => {
+  const inView = el => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.left >= 0 && r.top >= 0 && r.right <= innerWidth + 0.5 && r.bottom <= innerHeight + 0.5;
+  };
+  const panel = document.querySelector('#solvedPanel');
+  const box = document.querySelector('#adBox');
+  const ad = box.getBoundingClientRect();
+  const controls = [...document.querySelectorAll('#app button, #app a')].filter(el => getComputedStyle(el).visibility !== 'hidden' && el.offsetParent);
+  const gaps = controls.map(el => {
+    const r = el.getBoundingClientRect();
+    return Math.hypot(Math.max(0, r.left - ad.right, ad.left - r.right), Math.max(0, r.top - ad.bottom, ad.top - r.bottom));
+  });
+  return {
+    size: box.offsetWidth ? `${box.offsetWidth}x${box.offsetHeight}` : '',
+    filled: box.children.length,
+    boxInView: inView(box),
+    labelInView: inView(document.querySelector('#solvedPanel .ad p')),
+    textInView: ['#solved-title', '#solved-text', '#playAgainBtn', '#backBtn'].every(selector => inView(document.querySelector(selector))),
+    panelScrolls: panel.scrollHeight > panel.clientHeight || panel.scrollWidth > panel.clientWidth,
+    minGap: Math.min(...gaps),
+  };
+});
+
+test('turning a phone with the results open keeps the ad and both buttons in the first screen', async ({ page }) => {
   await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: fillingLoader }));
-  await page.setViewportSize({ width: 390, height: 750 });
+  await page.setViewportSize({ width: 360, height: 760 });
   await ready(page);
   await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
   await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['300x250']);
-  const size = () => page.locator('#adBox').evaluate(box => [box.offsetWidth, box.offsetHeight]);
-  expect(await size()).toEqual([300, 250]);
-  await page.setViewportSize({ width: 750, height: 390 });
-  expect(await size()).toEqual([300, 250]);
-  const gap = await page.evaluate(() => {
-    const box = document.querySelector('#adBox').getBoundingClientRect();
-    return document.querySelector('#solvedPanel .ad a').getBoundingClientRect().top - box.bottom;
-  });
-  expect(gap).toBeGreaterThanOrEqual(50);
+  await page.setViewportSize({ width: 760, height: 360 });
+  // The 300×250 box doesn't fit on its side; it goes at once, and a 320×50 one takes its place.
+  await expect.poll(async () => (await resultsLayout(page)).size).toBe('320x50');
+  await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['300x250', '320x50']);
+  const turned = await resultsLayout(page);
+  expect(turned).toMatchObject({ size: '320x50', filled: 1, boxInView: true, labelInView: true, textInView: true, panelScrolls: false });
+  expect(turned.minGap).toBeGreaterThanOrEqual(50);
+  // Turned back, the smaller ad still fits, so it stays and nothing new is asked for.
+  await page.setViewportSize({ width: 360, height: 760 });
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => window.__shown)).toEqual(['300x250', '320x50']);
+  expect(await resultsLayout(page)).toMatchObject({ size: '320x50', filled: 1, boxInView: true, textInView: true, panelScrolls: false });
   // The next visit sizes its box from the window again, not from the last ad.
   await page.click('#backBtn');
-  await page.setViewportSize({ width: 390, height: 500 });
   await page.click('#clearBtn');
   await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
-  await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['300x250', '320x100']);
-  expect(await size()).toEqual([320, 100]);
+  await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['300x250', '320x50', '300x250']);
+  expect((await resultsLayout(page)).size).toBe('300x250');
+});
+
+test('a screen too short for any results ad leaves it out and keeps the result and buttons in view', async ({ page }) => {
+  await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: fillingLoader }));
+  await page.setViewportSize({ width: 568, height: 320 });
+  await ready(page);
+  await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
+  await expect(page.locator('#solvedPanel')).toBeVisible();
+  await expect(page.locator('#solvedPanel .ad')).toBeHidden();
+  await page.waitForTimeout(600);
+  expect(await page.evaluate(() => window.__shown)).toBeUndefined();
+  expect(await resultsLayout(page)).toMatchObject({ size: '', textInView: true, panelScrolls: false });
+  // Turned upright, the screen holds a box again and gets one.
+  await page.setViewportSize({ width: 320, height: 568 });
+  await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['320x100']);
+  const upright = await resultsLayout(page);
+  expect(upright).toMatchObject({ size: '320x100', boxInView: true, labelInView: true, textInView: true, panelScrolls: false });
+  expect(upright.minGap).toBeGreaterThanOrEqual(50);
 });
 
 test('the results ad is one box that a new solve replaces, and the play screen and dialogs have none', async ({ page }) => {
@@ -401,6 +447,37 @@ for (const [width, height, size] of railCases) {
     expect(boards[1]).toEqual(boards[0]);
   });
 }
+
+test('the ad beside the board steps aside while the results show their own, at any window size', async ({ page }) => {
+  await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: fillingLoader }));
+  await page.clock.install();
+  await page.setViewportSize({ width: 1920, height: 850 });
+  await ready(page);
+  await page.locator('[data-square="e4"]').click();
+  await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['300x600']);
+  await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
+  await expect(page.locator('#solvedPanel')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['300x600', '300x250']);
+  const visibleAds = () => page.locator('ins:visible');
+  await expect(page.locator('#playAd')).toBeHidden();
+  // No ad stays on the page out of view.
+  await expect(page.locator('#playAdBox')).toBeEmpty();
+  await expect(visibleAds()).toHaveCount(1);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.setViewportSize({ width: 1920, height: 850 });
+  await expect(page.locator('#playAd')).toBeHidden();
+  await expect(visibleAds()).toHaveCount(1);
+  // Back on the board within the last rail ad's minute, the rail returns empty, and stays so while
+  // the board is left alone; the next new game after the minute brings its ad.
+  await page.click('#backBtn');
+  await expect(page.locator('#playAd')).toBeVisible();
+  await page.clock.runFor(90_000);
+  await expect(page.locator('#playAdBox')).toBeEmpty();
+  expect(await page.evaluate(() => window.__shown)).toEqual(['300x600', '300x250']);
+  await page.click('#clearBtn');
+  await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['300x600', '300x250', '300x600']);
+  await expect(visibleAds()).toHaveCount(1);
+});
 
 test('a buyer never sees the ad rail or a board shift while the page script is slow', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });

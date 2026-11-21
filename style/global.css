@@ -1341,7 +1341,9 @@ header,.brand,.header-actions {
   }
 }
 
-:root.ad-free .ad {
+/* A screen too short for the box beside the result and buttons, such as a
+   small phone on its side, leaves the ad out (main.js). */
+:root.ad-free .ad,.results.ad-left-out .ad {
   display:none;
 }
 
@@ -1423,6 +1425,11 @@ header,.brand,.header-actions {
     left:calc((100% - 468px) / 2);
     max-width:calc(100% - 492px);
   }
+}
+
+/* The results screen carries its own ad, so the one beside the game steps aside. */
+.app.on-results ~ .play-ad {
+  display:none;
 }
 
 .play-ad-row {
