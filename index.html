@@ -185,6 +185,9 @@
           const go = () => {
             if (!holding) return;
             holding = false;
+            // The watchdog counts from here, so a late paint can't cut the exit short.
+            clearTimeout(fallback);
+            fallback = setTimeout(end, 2300);
             start();
           };
           const after = (time) => setTimeout(go, Math.ceil(Math.max(0, time + 350 - performance.now())));

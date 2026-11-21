@@ -68,13 +68,13 @@ test('the exit waits under Chrome\'s fading launch screen until 350 ms after the
   await page.addInitScript(installed);
   await page.addInitScript(() => {
     // The game is ready first, and the page reports its contentful paint only when the exit asks for it,
-    // so an exit that didn't hold would start at once.
+    // so an exit that didn't hold would start at once. Its plain first paint came earlier.
     window.PerformanceObserver = class {
       static supportedEntryTypes = ['paint'];
       constructor(callback) { this.callback = callback; }
       observe() {
         window.painted = performance.now();
-        const entries = [{ name: 'first-paint', startTime: window.painted }, { name: 'first-contentful-paint', startTime: window.painted }];
+        const entries = [{ name: 'first-paint', startTime: window.painted - 200 }, { name: 'first-contentful-paint', startTime: window.painted }];
         queueMicrotask(() => this.callback({ getEntriesByName: name => entries.filter(entry => entry.name === name) }));
       }
       disconnect() {}
@@ -114,8 +114,7 @@ test('a paint report that never comes holds the copy no longer than a second', a
   await page.waitForFunction(() => window.exitStarted, null, { timeout: 3000 });
   const { started, called } = await page.evaluate(() => ({ started: window.exitStarted, called: window.exitCalled }));
   expect(started).toBeGreaterThanOrEqual(called + 1000);
-  // Before the watchdog, which would remove the copy without playing the exit.
-  expect(started).toBeLessThan(called + 2300);
+  expect(started).toBeLessThan(called + 1500);
 });
 
 test('a tap while the launch screen holds ends it without playing the exit', async ({ page }) => {
