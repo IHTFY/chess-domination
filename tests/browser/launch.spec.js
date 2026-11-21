@@ -91,14 +91,19 @@ test('the exit waits under Chrome\'s fading launch screen until 350 ms after the
   expect(started).toBeGreaterThanOrEqual(painted + 350);
 });
 
-test('a paint report that never comes holds the copy no longer than a full hold', async ({ page }) => {
+test('a paint report that never comes holds the copy no longer than a second', async ({ page }) => {
   await page.addInitScript(installed);
   await page.addInitScript(() => {
     window.PerformanceObserver = class {
       static supportedEntryTypes = ['paint'];
-      observe() { window.observed = performance.now(); }
+      observe() {}
       disconnect() {}
     };
+    let exit;
+    Object.defineProperty(window, 'launchExit', {
+      get: () => exit,
+      set: fn => { exit = (...args) => { window.exitCalled = performance.now(); return fn(...args); }; },
+    });
     const animate = Element.prototype.animate;
     Element.prototype.animate = function (keyframes, options) {
       if (this.id === 'launch-grid') window.exitStarted ??= performance.now();
@@ -106,10 +111,11 @@ test('a paint report that never comes holds the copy no longer than a full hold'
     };
   });
   await page.goto('/');
-  await page.waitForFunction(() => window.exitStarted, null, { timeout: 2000 });
-  const { started, observed } = await page.evaluate(() => ({ started: window.exitStarted, observed: window.observed }));
-  expect(started).toBeGreaterThanOrEqual(observed + 350);
-  expect(started).toBeLessThan(observed + 1000);
+  await page.waitForFunction(() => window.exitStarted, null, { timeout: 3000 });
+  const { started, called } = await page.evaluate(() => ({ started: window.exitStarted, called: window.exitCalled }));
+  expect(started).toBeGreaterThanOrEqual(called + 1000);
+  // Before the watchdog, which would remove the copy without playing the exit.
+  expect(started).toBeLessThan(called + 2300);
 });
 
 test('a tap while the launch screen holds ends it without playing the exit', async ({ page }) => {

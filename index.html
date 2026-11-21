@@ -189,13 +189,13 @@
           };
           const after = (time) => setTimeout(go, Math.ceil(Math.max(0, time + 350 - performance.now())));
           if (PerformanceObserver.supportedEntryTypes?.includes('paint')) {
-            // Buffered, so it reports a paint that already happened as well as one still to come. A paint
-            // report that never comes (a window sent to the background before it painted) waits no longer
-            // than a full hold.
+            // Buffered, so it reports a paint that already happened as well as one still to come. The page has
+            // painted long before a second passes once the game is ready, so a report that never comes (a
+            // window sent to the background before it painted) waits no longer than that.
             const late = setTimeout(() => {
               painted.disconnect();
               go();
-            }, 350);
+            }, 1000);
             const painted = new PerformanceObserver((list) => {
               const contentful = list.getEntriesByName('first-contentful-paint')[0];
               if (!contentful) return;
