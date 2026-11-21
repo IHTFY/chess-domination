@@ -15,6 +15,15 @@ test('a browser tab never shows the launch screen', async ({ page }) => {
 
 test('an installed launch plays once, and a key during it only skips it', async ({ page }) => {
   await page.addInitScript(installed);
+  // Slow the exit down so the key surely lands during it; the head script's 2 s fallback still holds.
+  await page.addInitScript(() => {
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (keyframes, options) {
+      const animation = animate.call(this, keyframes, options);
+      animation.playbackRate = 0.1;
+      return animation;
+    };
+  });
   await page.goto('/');
   await page.waitForFunction(() => document.getElementById('launch-grid')?.getAnimations().length > 0);
   const sound = await page.locator('#soundSwitch').getAttribute('aria-pressed');
@@ -33,8 +42,17 @@ test('an installed launch plays once, and a key during it only skips it', async 
 test('under reduced motion the launch screen fades out and the game takes input', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript(installed);
+  await page.addInitScript(() => {
+    const animate = Element.prototype.animate;
+    window.launchAnimations = [];
+    Element.prototype.animate = function (keyframes, options) {
+      window.launchAnimations.push([this.id, Object.keys(keyframes)]);
+      return animate.call(this, keyframes, options);
+    };
+  });
   await page.goto('/');
   await expect(page.locator('#launch')).toHaveCount(0);
+  expect(await page.evaluate(() => window.launchAnimations)).toEqual([['launch', ['opacity']]]);
   await page.locator('#dominationBtn').click();
   await expect(page.locator('#dominationBtn')).toHaveAttribute('aria-pressed', 'true');
 });

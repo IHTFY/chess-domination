@@ -90,7 +90,7 @@
         const root = document.documentElement;
         try {
           const nav = performance.getEntriesByType('navigation')[0];
-          const app = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches;
+          const app = matchMedia('(display-mode: standalone)').matches;
           if (!app || nav?.type !== 'navigate' || sessionStorage.getItem('launched')) return;
           sessionStorage.setItem('launched', '1');
         } catch {
@@ -98,8 +98,14 @@
         }
         root.classList.add('launching');
         let animations = [];
-        const skip = () => animations.forEach((a) => a.finish());
-        // While the copy shows, a tap, key, or resize only skips it: nothing behind it reacts.
+        let skipped = false;
+        let inert = [];
+        let layout;
+        const skip = () => {
+          skipped = true;
+          animations.forEach((a) => a.finish());
+        };
+        // While the copy shows, a tap or key only skips it: nothing behind it reacts.
         const swallow = (event) => {
           event.preventDefault();
           event.stopImmediatePropagation();
@@ -109,22 +115,28 @@
           clearTimeout(fallback);
           removeEventListener('pointerdown', swallow, true);
           removeEventListener('keydown', swallow, true);
-          removeEventListener('resize', skip);
+          layout?.disconnect();
+          inert.forEach((el) => (el.inert = false));
           root.classList.remove('launching');
           document.getElementById('launch')?.remove();
         };
         addEventListener('pointerdown', swallow, true);
         addEventListener('keydown', swallow, true);
-        addEventListener('resize', skip);
         // The game never stays hidden behind the copy if launchExit isn't called or its exit fails.
         let fallback = setTimeout(end, 4000);
         // play(overlay) starts the game's exit and returns its Web Animations.
         window.launchExit = (play) => {
           const overlay = document.getElementById('launch');
           // Too late: the fallback already removed the copy.
-          if (!overlay) return;
+          if (!overlay || !root.classList.contains('launching')) return;
+          // A tap or key while the game was loading: show it at once.
+          if (skipped) return end();
           clearTimeout(fallback);
           fallback = setTimeout(end, 2000);
+          const page = [...document.body.children].filter((el) => el !== overlay);
+          // Nothing behind the copy can be reached, even by assistive technology.
+          inert = page.filter((el) => !el.inert);
+          inert.forEach((el) => (el.inert = true));
           try {
             if (!matchMedia('(prefers-reduced-motion: reduce)').matches) animations = play(overlay);
           } catch {
@@ -135,6 +147,11 @@
               animations = [overlay.animate({ opacity: [1, 0] }, { duration: 200, easing: 'ease-out', fill: 'forwards' })];
             }
             Promise.all(animations.map((a) => a.finished)).then(end, end);
+            // Targets measured at the start go stale when the layout changes (a turn, the ad rail): skip to the end.
+            // The observer reports every element once on observe; only later reports are changes.
+            let armed = false;
+            layout = new ResizeObserver(() => (armed ? skip() : (armed = true)));
+            page.forEach((el) => layout.observe(el));
           } catch {
             end();
           }
