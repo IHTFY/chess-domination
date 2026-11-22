@@ -110,9 +110,11 @@
           event.preventDefault();
           event.stopImmediatePropagation();
           // A touch's click comes after the game takes input again, aimed at whatever is under the finger.
-          if (event.type === 'pointerdown') {
+          if (event.type === 'pointerdown' && event.isPrimary && event.button === 0) {
+            const spare = () => removeEventListener('click', eat, true);
             addEventListener('click', eat, { capture: true, once: true });
-            setTimeout(() => removeEventListener('click', eat, true), 1000);
+            addEventListener('pointercancel', spare, { once: true });
+            setTimeout(spare, 1000);
           }
           skip();
         };
