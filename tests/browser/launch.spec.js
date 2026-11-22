@@ -156,6 +156,34 @@ test('a tap while the launch screen holds ends it without playing the exit', asy
   expect(await page.evaluate(() => document.documentElement.inert)).toBe(false);
 });
 
+for (const phase of ['holds', 'plays']) {
+  test(`a touch while the launch ${phase} reaches nothing behind it`, async ({ browser }) => {
+    const context = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+    const page = await context.newPage();
+    await page.addInitScript(installed);
+    await page.addInitScript(slow);
+    if (phase === 'holds') await page.addInitScript(() => {
+      Object.defineProperty(PerformanceObserver, 'supportedEntryTypes', { value: [] });
+      let exit;
+      Object.defineProperty(window, 'launchExit', {
+        get: () => exit,
+        set: fn => { exit = (...args) => { window.exitCalled = true; return fn(...args); }; },
+      });
+    });
+    await page.goto('/');
+    if (phase === 'holds') await page.waitForFunction(() => window.exitCalled);
+    else await page.waitForFunction(() => document.getElementById('launch-grid')?.getAnimations().length > 0);
+    const sound = await page.locator('#soundSwitch').getAttribute('aria-pressed');
+    const { x, y, width, height } = await page.locator('#soundSwitch').boundingBox();
+    await page.touchscreen.tap(x + width / 2, y + height / 2);
+    await expect(page.locator('#launch')).toHaveCount(0, { timeout: 5000 });
+    // A click that would reach the switch comes right after the tap.
+    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 100)));
+    await expect(page.locator('#soundSwitch')).toHaveAttribute('aria-pressed', sound);
+    await context.close();
+  });
+}
+
 test('a layout change during the launch aims the icon at the moved board', async ({ page }) => {
   await page.addInitScript(installed);
   await page.addInitScript(slow);
