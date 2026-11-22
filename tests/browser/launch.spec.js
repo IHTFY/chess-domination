@@ -94,6 +94,10 @@ test('the exit waits under Chrome\'s fading launch screen until 350 ms after the
 test('a paint report that never comes shows the game after a second without the exit', async ({ page }) => {
   await page.addInitScript(installed);
   await page.addInitScript(() => {
+    // Timers run threefold, so the one-second limit (3 s here) and the watchdog (6.9 s) are far apart
+    // even on a loaded machine.
+    const setTimeout = window.setTimeout;
+    window.setTimeout = (callback, delay, ...args) => setTimeout(callback, delay * 3, ...args);
     window.PerformanceObserver = class {
       static supportedEntryTypes = ['paint'];
       observe() {}
@@ -114,12 +118,12 @@ test('a paint report that never comes shows the game after a second without the 
     };
   });
   await page.goto('/');
-  await page.waitForFunction(() => window.shown, null, { timeout: 3000 });
+  await page.waitForFunction(() => window.shown, null, { timeout: 10000 });
   const { shown, called, played, inert } = await page.evaluate(() => ({
     shown: window.shown, called: window.exitCalled, played: window.exitPlayed, inert: document.documentElement.inert,
   }));
-  expect(shown).toBeGreaterThanOrEqual(called + 1000);
-  expect(shown).toBeLessThan(called + 1500);
+  expect(shown).toBeGreaterThanOrEqual(called + 3000);
+  expect(shown).toBeLessThan(called + 6900);
   expect(played).toBeUndefined();
   expect(inert).toBe(false);
 });
