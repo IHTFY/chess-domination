@@ -64,6 +64,126 @@ test('a tap during an installed launch only skips it', async ({ page }) => {
   expect(await page.evaluate(() => document.getElementById('board').shadowRoot.querySelector('[data-square="a1"]').getAnimations().length)).toBe(0);
 });
 
+test('the exit waits under Chrome\'s fading launch screen until 350 ms after the first contentful paint', async ({ page }) => {
+  await page.addInitScript(installed);
+  await page.addInitScript(() => {
+    // The game is ready first, and the page reports its contentful paint only when the exit asks for it,
+    // so an exit that didn't hold would start at once. Its plain first paint came earlier.
+    window.PerformanceObserver = class {
+      static supportedEntryTypes = ['paint'];
+      constructor(callback) { this.callback = callback; }
+      observe() {
+        window.painted = performance.now();
+        const entries = [{ name: 'first-paint', startTime: window.painted - 200 }, { name: 'first-contentful-paint', startTime: window.painted }];
+        queueMicrotask(() => this.callback({ getEntriesByName: name => entries.filter(entry => entry.name === name) }));
+      }
+      disconnect() {}
+    };
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (keyframes, options) {
+      if (this.id === 'launch-grid') window.exitStarted ??= performance.now();
+      return animate.call(this, keyframes, options);
+    };
+  });
+  await page.goto('/');
+  await page.waitForFunction(() => window.exitStarted);
+  const { started, painted } = await page.evaluate(() => ({ started: window.exitStarted, painted: window.painted }));
+  expect(started).toBeGreaterThanOrEqual(painted + 350);
+});
+
+test('a paint report that never comes shows the game after a second without the exit', async ({ page }) => {
+  await page.addInitScript(installed);
+  await page.addInitScript(() => {
+    // Timers run threefold, so the one-second limit (3 s here) and the watchdog (6.9 s) are far apart
+    // even on a loaded machine.
+    const setTimeout = window.setTimeout;
+    window.setTimeout = (callback, delay, ...args) => setTimeout(callback, delay * 3, ...args);
+    window.PerformanceObserver = class {
+      static supportedEntryTypes = ['paint'];
+      observe() {}
+      disconnect() {}
+    };
+    let exit;
+    Object.defineProperty(window, 'launchExit', {
+      get: () => exit,
+      set: fn => { exit = (...args) => { window.exitCalled = performance.now(); return fn(...args); }; },
+    });
+    new MutationObserver(() => {
+      if (window.exitCalled && !document.getElementById('launch')) window.shown ??= performance.now();
+    }).observe(document, { childList: true, subtree: true });
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (keyframes, options) {
+      if (this.id === 'launch-grid') window.exitPlayed = true;
+      return animate.call(this, keyframes, options);
+    };
+  });
+  await page.goto('/');
+  await page.waitForFunction(() => window.shown, null, { timeout: 10000 });
+  const { shown, called, played, inert } = await page.evaluate(() => ({
+    shown: window.shown, called: window.exitCalled, played: window.exitPlayed, inert: document.documentElement.inert,
+  }));
+  expect(shown).toBeGreaterThanOrEqual(called + 3000);
+  expect(shown).toBeLessThan(called + 6900);
+  expect(played).toBeUndefined();
+  expect(inert).toBe(false);
+});
+
+test('a tap while the launch screen holds ends it without playing the exit', async ({ page }) => {
+  await page.addInitScript(installed);
+  await page.addInitScript(slow);
+  await page.addInitScript(() => {
+    // Without paint timing the copy holds a full 300 ms, slowed here to 3 s.
+    Object.defineProperty(PerformanceObserver, 'supportedEntryTypes', { value: [] });
+    let exit;
+    Object.defineProperty(window, 'launchExit', {
+      get: () => exit,
+      set: fn => { exit = (...args) => { window.exitCalled = true; return fn(...args); }; },
+    });
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (keyframes, options) {
+      if (this.id === 'launch-grid') window.exitPlayed = true;
+      return animate.call(this, keyframes, options);
+    };
+  });
+  await page.goto('/');
+  await page.waitForFunction(() => window.exitCalled);
+  const sound = await page.locator('#soundSwitch').getAttribute('aria-pressed');
+  const { x, y, width, height } = await page.locator('#soundSwitch').boundingBox();
+  await page.mouse.click(x + width / 2, y + height / 2);
+  await expect(page.locator('#launch')).toHaveCount(0, { timeout: 1000 });
+  await expect(page.locator('#soundSwitch')).toHaveAttribute('aria-pressed', sound);
+  expect(await page.evaluate(() => window.exitPlayed)).toBeUndefined();
+  expect(await page.evaluate(() => document.documentElement.inert)).toBe(false);
+});
+
+for (const phase of ['holds', 'plays']) {
+  test(`a touch while the launch ${phase} reaches nothing behind it`, async ({ browser }) => {
+    const context = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+    const page = await context.newPage();
+    await page.addInitScript(installed);
+    await page.addInitScript(slow);
+    if (phase === 'holds') await page.addInitScript(() => {
+      Object.defineProperty(PerformanceObserver, 'supportedEntryTypes', { value: [] });
+      let exit;
+      Object.defineProperty(window, 'launchExit', {
+        get: () => exit,
+        set: fn => { exit = (...args) => { window.exitCalled = true; return fn(...args); }; },
+      });
+    });
+    await page.goto('/');
+    if (phase === 'holds') await page.waitForFunction(() => window.exitCalled);
+    else await page.waitForFunction(() => document.getElementById('launch-grid')?.getAnimations().length > 0);
+    const sound = await page.locator('#soundSwitch').getAttribute('aria-pressed');
+    const { x, y, width, height } = await page.locator('#soundSwitch').boundingBox();
+    await page.touchscreen.tap(x + width / 2, y + height / 2);
+    await expect(page.locator('#launch')).toHaveCount(0, { timeout: 5000 });
+    // A click that would reach the switch comes right after the tap.
+    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 100)));
+    await expect(page.locator('#soundSwitch')).toHaveAttribute('aria-pressed', sound);
+    await context.close();
+  });
+}
+
 test('a layout change during the launch aims the icon at the moved board', async ({ page }) => {
   await page.addInitScript(installed);
   await page.addInitScript(slow);
