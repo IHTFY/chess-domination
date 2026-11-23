@@ -111,6 +111,14 @@ let screenAsk = null;
 // Whether the result, the box and the buttons all show without scrolling the screen.
 const fits = screen => screen.scrollHeight <= screen.clientHeight && screen.scrollWidth <= screen.clientWidth;
 
+// Whether the screen fits with its rosette, or else without it: the rosette gives way before the ad steps down a size.
+function fitsWithRosette(screen) {
+  screen.classList.remove('rosette-left-out');
+  if (fits(screen)) return true;
+  screen.classList.add('rosette-left-out');
+  return fits(screen);
+}
+
 function cancelScreenAsk() {
   clearTimeout(screenTimer);
   screenAsk = null;
@@ -145,11 +153,12 @@ function placeScreenAd(screen, later) {
     if (screenAsked.has(candidate)) return false;
     const [width, height] = candidate.split('x');
     Object.assign(box.style, { width: `${width}px`, height: `${height}px`, minHeight: `${height}px` });
-    return fits(screen);
+    return fitsWithRosette(screen);
   });
   if (!size) {
     box.removeAttribute('style');
     screen.classList.add('ad-left-out');
+    fitsWithRosette(screen);
     return;
   }
   box.dataset.adSize = size;

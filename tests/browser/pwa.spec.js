@@ -96,14 +96,14 @@ test('the Solved screen adds no element for the rosette, so a stale cached style
   await context.route(/^https?:\/\/(?!127\.0\.0\.1:8765(?:\/|$))/, route => route.abort());
   await page.route('**/style/global.css', route => route.fulfill({ contentType: 'text/css', body: '.results { display: grid; gap: 12px; }' }));
   await page.goto('/');
-  const shift = await page.evaluate(() => {
+  // The page's results must be as tall as the result, the ad and the buttons alone.
+  const extra = await page.evaluate(() => {
     const panel = document.querySelector('#solvedPanel');
     panel.hidden = false;
-    const top = () => document.querySelector('#solved-title').getBoundingClientRect().top;
-    const before = top();
-    for (const element of [...panel.children]) if (!element.matches('h2, p, aside, .results-actions')) element.remove();
-    return before - top();
+    const before = panel.scrollHeight;
+    for (const element of [...panel.children]) if (!element.matches('#solved-title, #solved-text, aside.ad, .results-actions')) element.remove();
+    return before - panel.scrollHeight;
   });
-  expect(shift).toBe(0);
+  expect(extra).toBe(0);
   await context.close();
 });

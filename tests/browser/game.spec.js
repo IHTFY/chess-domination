@@ -267,7 +267,7 @@ test('a solved board opens the results screen once per solve; examples and first
 // Each box as the loader fills it: a fixed-size unit of the size asked for.
 const fillingLoader = 'window.ihtfyAds = { show(box) { const [w, h] = box.dataset.adSize.split("x"); const ad = document.createElement("ins"); ad.style.cssText = `display:inline-block;width:${w}px;height:${h}px`; box.append(ad); (window.__shown ??= []).push(box.dataset.adSize); } };';
 // A third entry is the size a window too short for the stylesheet's size steps down to.
-const resultsCases = [[360, 640], [390, 750], [412, 800], [1280, 800], [375, 560], [360, 400], [1440, 620, '320x100']];
+const resultsCases = [[360, 640], [390, 720], [390, 750], [412, 800], [1280, 800], [1440, 720], [375, 560], [360, 400], [1440, 620, '320x100']];
 for (const [width, height, smaller] of resultsCases) {
   test(`at ${width}x${height} the results ad is in view, clear of every control, and does not shift the screen`, async ({ page }) => {
     await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: fillingLoader }));

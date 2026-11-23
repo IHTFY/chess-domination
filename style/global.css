@@ -1223,6 +1223,8 @@ header,.brand,.header-actions {
   pointer-events:none;
   stroke-width:.055;
   stroke-linecap:round;
+  /* A cream edge keeps the coral rays apart from the green squares. */
+  filter:drop-shadow(0 0 .5px var(--bg)) drop-shadow(0 0 .5px var(--bg));
 }
 
 #safe-demo .example-piece img {
@@ -1277,7 +1279,7 @@ header,.brand,.header-actions {
 /* The score rosette shows only where it fits above the result without pushing the ad down.
    The stylesheet draws it, so a stale cached stylesheet with this page lays the results out as before. */
 @media(min-height:720px) {
-  #solved-title::before {
+  .results:not(.rosette-left-out) #solved-title::before {
     content:"";
     display:block;
     width:75px;
