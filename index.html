@@ -100,7 +100,8 @@
         let follow = () => {};
         const resized = () => follow();
         const skip = () => {
-          skipped = true;
+          // The game's wait for a first input counts a skip that came before its script loaded.
+          skipped = window.launchSkipped = true;
           // Nothing plays yet while the copy holds still, so it simply goes.
           if (holding) return end();
           animations.forEach((a) => a.finish());
@@ -159,6 +160,9 @@
         };
         addEventListener('pointerdown', swallow, { capture: true, signal: exit.signal });
         addEventListener('keydown', swallow, { capture: true, signal: exit.signal });
+        // With a blocking touch listener in place when a finger lands, Chromium sends its touchstart as
+        // cancelable, so the guard can still cancel it after the skip has ended the launch.
+        addEventListener('touchstart', (event) => event.preventDefault(), { capture: true, passive: false, signal: exit.signal });
         // The game never stays hidden behind the copy if launchExit isn't called or its exit fails.
         let fallback = setTimeout(end, 4000);
         // play(overlay) starts the game's exit and returns its Web Animations.

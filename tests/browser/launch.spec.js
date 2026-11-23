@@ -206,14 +206,18 @@ test('a mouse press held past the launch loses its click, and the next click wor
   await page.goto('/');
   await page.waitForFunction(() => document.getElementById('launch-grid')?.getAnimations().length > 0);
   const sound = await page.locator('#soundSwitch').getAttribute('aria-pressed');
-  const { x, y, width, height } = await page.locator('#soundSwitch').boundingBox();
-  await page.mouse.move(x + width / 2, y + height / 2);
-  await page.mouse.down();
+  // Chromium aims a click at the page when its press began on the inert page, so these events stand in
+  // for a browser that aims it at the switch under the pointer.
+  const mouse = { bubbles: true, cancelable: true, isPrimary: true, button: 0, pointerId: 1, pointerType: 'mouse' };
+  await page.evaluate(init => document.getElementById('launch').dispatchEvent(new PointerEvent('pointerdown', init)), mouse);
   await expect(page.locator('#launch')).toHaveCount(0, { timeout: 5000 });
   await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 1200)));
-  await page.mouse.up();
+  await page.locator('#soundSwitch').evaluate((target, init) => {
+    target.dispatchEvent(new PointerEvent('pointerup', init));
+    target.dispatchEvent(new PointerEvent('click', { ...init, detail: 1 }));
+  }, mouse);
   await expect(page.locator('#soundSwitch')).toHaveAttribute('aria-pressed', sound);
-  await page.mouse.click(x + width / 2, y + height / 2);
+  await page.locator('#soundSwitch').click();
   await expect(page.locator('#soundSwitch')).not.toHaveAttribute('aria-pressed', sound);
 });
 
@@ -268,6 +272,27 @@ test('a key that skips the launch still counts as the first input, which starts 
   await page.goto('/');
   await page.waitForFunction(() => document.getElementById('launch-grid')?.getAnimations().length > 0);
   await page.keyboard.press('Shift');
+  await expect(page.locator('#launch')).toHaveCount(0, { timeout: 5000 });
+  await expect.poll(() => page.evaluate(() => window.__shown), { timeout: 10000 }).toEqual(['300x600']);
+});
+
+test('a key that skips the launch before the game script loads still starts the ad beside the board', async ({ page }) => {
+  await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({
+    contentType: 'text/javascript',
+    body: 'window.ihtfyAds = { show(box) { (window.__shown ??= []).push(box.dataset.adSize); } };',
+  }));
+  let release;
+  const loaded = new Promise(resolve => { release = resolve; });
+  await page.route('**/scripts/main.js', async route => {
+    await loaded;
+    await route.continue();
+  });
+  await page.setViewportSize({ width: 1920, height: 850 });
+  await page.addInitScript(installed);
+  await page.goto('/', { waitUntil: 'commit' });
+  await page.waitForFunction(() => document.documentElement.classList.contains('launching') && document.getElementById('launch'));
+  await page.keyboard.press('Shift');
+  release();
   await expect(page.locator('#launch')).toHaveCount(0, { timeout: 5000 });
   await expect.poll(() => page.evaluate(() => window.__shown), { timeout: 10000 }).toEqual(['300x600']);
 });
