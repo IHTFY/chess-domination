@@ -130,9 +130,9 @@
           addEventListener('pointerdown', (next) => next.isPrimary && next.pointerType === press.pointerType && drop(), options);
           addEventListener('pointercancel', (other) => mine(other) && drop(), options);
           addEventListener('pointerup', (up) => {
-            if (!mine(up)) return;
-            released = true;
-            setTimeout(drop, 1000);
+            // A click without a pointer id belongs to the pointer that lifted last.
+            released = mine(up);
+            if (released) setTimeout(drop, 1000);
           }, options);
         };
         // While the copy shows, a tap or key only skips it: nothing behind it reacts. Other listeners on window

@@ -233,6 +233,30 @@ test('a keyboard click right after a skipping press goes through', async ({ page
   await page.mouse.up();
 });
 
+test('where clicks carry no pointer id, another pointer\'s click after a skipping press goes through', async ({ page }) => {
+  await page.addInitScript(installed);
+  await page.addInitScript(slow);
+  await page.goto('/');
+  await page.waitForFunction(() => document.getElementById('launch-grid')?.getAnimations().length > 0);
+  const sound = await page.locator('#soundSwitch').getAttribute('aria-pressed');
+  // Older Safari: a mouse press skips and lifts without a click, then a finger taps the switch.
+  await page.evaluate(() => {
+    const send = (target, type, init) => target.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, isPrimary: true, button: 0, ...init }));
+    const mouse = { pointerId: 1, pointerType: 'mouse' };
+    send(document.getElementById('launch'), 'pointerdown', mouse);
+    send(document, 'pointerup', mouse);
+  });
+  await expect(page.locator('#launch')).toHaveCount(0, { timeout: 5000 });
+  await page.evaluate(() => {
+    const target = document.getElementById('soundSwitch');
+    const finger = { bubbles: true, isPrimary: true, button: 0, pointerId: 2, pointerType: 'touch' };
+    target.dispatchEvent(new PointerEvent('pointerdown', finger));
+    target.dispatchEvent(new PointerEvent('pointerup', finger));
+    target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));
+  });
+  await expect(page.locator('#soundSwitch')).not.toHaveAttribute('aria-pressed', sound);
+});
+
 test('a key that skips the launch still counts as the first input, which starts the ad beside the board', async ({ page }) => {
   await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({
     contentType: 'text/javascript',
