@@ -1,7 +1,8 @@
-# Total Field Blue
+# Modernist print
 
-`icon.svg` is the editable vector source for all production icon assets. The palette
-is navy `#0b1730`, slate blues `#203c60` / `#31577c`, and pale blue `#8bd0ff`.
+`icon.svg` is the editable vector source for all production icon assets, traced from the
+picked concept. The palette is cream `#fcf1e0` (the page background), green `#255d4e`,
+coral `#f15e6a`, and ink `#321a23`.
 
 Regenerate with the pinned Playwright Chromium renderer:
 
@@ -13,8 +14,9 @@ pnpm icons:generate
 
 Outputs:
 - Standard PWA PNGs: 192 and 512 px, plus the scalable SVG.
-- Dedicated maskable PNGs: 192 and 512 px with slightly more padding. All foreground
-  artwork stays inside the centered safe circle of radius 40% of icon width.
+- Dedicated maskable PNGs: 192 and 512 px without the ink frame, with the art scaled to
+  76% so the board's corners stay inside the centered safe circle of radius 40% of icon
+  width. The launch animation in `index.html` copies this layout.
 - Apple touch icon: 180 px, opaque and square so the OS can apply its own mask.
 - PNG favicons: 16 and 32 px; ICO fallback contains 16, 32, and 48 px PNG frames.
 - Windows tile: 150 px. The existing 1224 px `large.png` is retained as a high-resolution export.

@@ -9,10 +9,11 @@ try {
   const page = await browser.newPage({ deviceScaleFactor: 1 });
   const render = async (size, maskable = false) => {
     await page.setViewportSize({ width: size, height: size });
+    // Maskable: drop the frame and shrink the art so the board's corners stay inside the safe circle.
     const svg = maskable
-      ? source.replace(/(<rect x="0"[^>]*\/>)/, '$1<g transform="translate(15.36 15.36) scale(0.94)">').replace('</svg>', '</g></svg>')
+      ? source.replace(/<rect id="frame"[^>]*\/>\n?/, '').replace('<g id="art">', '<g id="art" transform="translate(61.44 61.44) scale(0.76)">')
       : source;
-    await page.setContent(`<style>html,body{margin:0;background:#0b1730}img{display:block;width:100vw;height:100vh}</style><img alt="" src="data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}">`);
+    await page.setContent(`<style>html,body{margin:0;background:#fcf1e0}img{display:block;width:100vw;height:100vh}</style><img alt="" src="data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}">`);
     await page.locator('img').evaluate(image => image.decode());
     return page.screenshot({ type: 'png' });
   };

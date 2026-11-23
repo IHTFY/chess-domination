@@ -153,7 +153,7 @@ test('offline reload serves the game and activation preserves unrelated caches',
   await page.click('#exampleBtn');
   await expect.poll(() => page.evaluate(() => Object.keys(document.querySelector('#board').position).length)).toBe(8);
   expect(await page.evaluate(async () => {
-    const urls = ['scripts/storage.js', 'style/global.css', 'svg/wQ.svg', 'sounds/beeps.mp3', 'manifest.json'];
+    const urls = ['scripts/storage.js', 'style/global.css', 'img/pieces/wQ.webp', 'sounds/beeps.mp3', 'manifest.json'];
     return Promise.all(urls.map(async url => (await fetch(url)).ok));
   })).toEqual([true, true, true, true, true]);
 });

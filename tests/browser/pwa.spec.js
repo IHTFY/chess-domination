@@ -36,7 +36,7 @@ test('manifest parses and declares decodable icons with accurate sizes and safe 
           const offset = (y * canvas.width + x) * 4;
           if (data[offset + 3] !== 255) transparent = true;
           if (Math.hypot(x + 0.5 - canvas.width / 2, y + 0.5 - canvas.height / 2) > canvas.width * 0.4 &&
-            (data[offset] !== 11 || data[offset + 1] !== 23 || data[offset + 2] !== 48)) outsideSafeZone = true;
+            (data[offset] !== 252 || data[offset + 1] !== 241 || data[offset + 2] !== 224)) outsideSafeZone = true;
         }
       }
       return { width: image.naturalWidth, height: image.naturalHeight, transparent, outsideSafeZone };
