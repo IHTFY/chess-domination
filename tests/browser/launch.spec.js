@@ -195,7 +195,7 @@ test('a layout change during the launch aims the icon at the moved board', async
   const aim = () => page.evaluate(() => {
     const center = rect => [rect.left + rect.width / 2, rect.top + rect.height / 2];
     const [x0, y0] = center(document.getElementById('launch-icon').getBoundingClientRect());
-    const [x, y] = center(document.getElementById('board').shadowRoot.querySelector('[data-square="e4"]').getBoundingClientRect());
+    const [x, y] = center(document.getElementById('board').shadowRoot.querySelector('[data-square="d4"]').getBoundingClientRect());
     const flight = document.getElementById('launch-grid').getAnimations().find(a => a.effect.getKeyframes()[1].transform !== undefined);
     const [, dx, dy] = flight.effect.getKeyframes()[1].transform.match(/translate\(([-\d.]+)px, ([-\d.]+)px\)/);
     return [Math.abs(dx - (x - x0)), Math.abs(dy - (y - y0))];

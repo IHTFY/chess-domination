@@ -111,6 +111,14 @@ let screenAsk = null;
 // Whether the result, the box and the buttons all show without scrolling the screen.
 const fits = screen => screen.scrollHeight <= screen.clientHeight && screen.scrollWidth <= screen.clientWidth;
 
+// Whether the screen fits with its rosette, or else without it: the rosette gives way before the ad steps down a size.
+function fitsWithRosette(screen) {
+  screen.classList.remove('rosette-left-out');
+  if (fits(screen)) return true;
+  screen.classList.add('rosette-left-out');
+  return fits(screen);
+}
+
 function cancelScreenAsk() {
   clearTimeout(screenTimer);
   screenAsk = null;
@@ -145,11 +153,12 @@ function placeScreenAd(screen, later) {
     if (screenAsked.has(candidate)) return false;
     const [width, height] = candidate.split('x');
     Object.assign(box.style, { width: `${width}px`, height: `${height}px`, minHeight: `${height}px` });
-    return fits(screen);
+    return fitsWithRosette(screen);
   });
   if (!size) {
     box.removeAttribute('style');
     screen.classList.add('ad-left-out');
+    fitsWithRosette(screen);
     return;
   }
   box.dataset.adSize = size;
@@ -179,13 +188,13 @@ function showScreenAd(name, screen, key) {
 }
 
 /**
- * After the window changes size: an ad that no longer fits `screen` (a phone turned on its side)
+ * After the window changes size: an ad that no longer fits `screen`, even without the rosette (a phone turned on its side),
  * gives way at once to a box the screen can hold, or to none. One that still fits stays, and if
  * its request is still waiting, the wait starts again.
  */
 function refitScreenAd(screen) {
   if (screenKey === null) return;
-  if (screen.classList.contains('ad-left-out') || !fits(screen)) placeScreenAd(screen, true);
+  if (screen.classList.contains('ad-left-out') || !fitsWithRosette(screen)) placeScreenAd(screen, true);
   else if (screenAsk) askOnceSettled(screenAsk);
 }
 
@@ -349,7 +358,8 @@ await board.updateComplete;
 board.draggablePieces = true;
 board.sparePieces = true;
 board.dropOffBoard = 'trash';
-board.pieceTheme = piece => `svg/${piece}.svg`;
+// Only white pieces are played; the component's hidden black shelf reuses the same files.
+board.pieceTheme = piece => `img/pieces/w${piece[1]}.webp`;
 await board.updateComplete;
 
 // Place the component's native spare-piece shelf in the control panel.
@@ -365,15 +375,18 @@ boardStyle.textContent = `
   [part='spare-pieces'] > div:not([id]) { display: none; }
   [id^='spare-w'] {
     box-sizing: border-box; display: grid; place-items: center; min-width: 0; min-height: 0;
-    border: 1px solid #203554; background: #0e1b32; border-radius: 10px;
+    border: 1.5px solid #1a0a12; background: #fcf1e0; border-radius: 8px;
     padding: 6px; touch-action: none; cursor: grab;
   }
-  [id^='spare-w'][aria-pressed='true'] { background: #193251; border-color: #6998dd; }
+  [id^='spare-w'][aria-pressed='true'] {
+    background: repeating-linear-gradient(-45deg, #e0857c 0 2px, #fcf1e0 2px 4px);
+    box-shadow: inset 0 0 0 1px #1a0a12, 0 2px 0 #1a0a12;
+  }
   [id^='spare-w'] [part~='piece'] { width: 100%; height: 100%; max-width: 32px; max-height: 32px; }
   [part~='piece'] img { -webkit-user-drag: none; }
   [data-square] { cursor: pointer; }
   [data-square]:has([piece]) { cursor: grab; }
-  [data-square]:focus-visible, [id^='spare-w']:focus-visible { outline: 3px solid #78a8f6; outline-offset: -3px; }
+  [data-square]:focus-visible, [id^='spare-w']:focus-visible { outline: 3px solid #1a0a12; outline-offset: -3px; }
 `;
 board.shadowRoot.append(boardStyle);
 
@@ -715,7 +728,7 @@ for (const [id, occupied] of [['coverage-demo', [[1, 2]]], ['safe-demo', [[0, 3]
     if ((x + y) % 2) cell.classList.add('dark');
     if (occupied.some(([a, b]) => a === x && b === y)) {
       cell.classList.add('example-piece');
-      const img = document.createElement('img'); img.src = 'svg/wQ.svg'; img.alt = ''; cell.append(img);
+      const img = document.createElement('img'); img.src = 'img/pieces/wQ.webp'; img.alt = ''; cell.append(img);
     } else if (id === 'coverage-demo' && (x === 1 || y === 2 || Math.abs(x - 1) === Math.abs(y - 2))) cell.classList.add('controlled');
     $(id).append(cell);
   }
@@ -725,7 +738,7 @@ const svgNS = 'http://www.w3.org/2000/svg';
 const rays = document.createElementNS(svgNS, 'svg');
 rays.setAttribute('viewBox', '0 0 4 4');
 rays.classList.add('attack-rays');
-rays.innerHTML = '<defs>' + ['blue', 'red'].map(color => `<marker id="ray-${color}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="${color === 'blue' ? '#64b5ff' : '#ff7b86'}"/></marker>`).join('') + '</defs>';
+rays.innerHTML = '<defs>' + ['blue', 'red'].map(color => `<marker id="ray-${color}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="${color === 'blue' ? '#1a0a12' : '#ca616b'}"/></marker>`).join('') + '</defs>';
 for (const [index, [x, y]] of [[0, 3], [2, 0]].entries()) {
   const color = index === 0 ? 'blue' : 'red';
   safeDemo.children[y * 4 + x].classList.add(`queen-${color}`);
@@ -735,7 +748,7 @@ for (const [index, [x, y]] of [[0, 3], [2, 0]].entries()) {
       dy > 0 ? (3.88 - cy) / dy : dy < 0 ? (.12 - cy) / dy : Infinity);
     if (distance < .6) continue;
     const line = document.createElementNS(svgNS, 'line');
-    for (const [name, value] of Object.entries({ x1: cx + dx * .35, y1: cy + dy * .35, x2: cx + dx * distance, y2: cy + dy * distance, stroke: color === 'blue' ? '#64b5ff' : '#ff7b86', 'marker-end': `url(#ray-${color})` })) line.setAttribute(name, value);
+    for (const [name, value] of Object.entries({ x1: cx + dx * .35, y1: cy + dy * .35, x2: cx + dx * distance, y2: cy + dy * distance, stroke: color === 'blue' ? '#1a0a12' : '#ca616b', 'marker-end': `url(#ray-${color})` })) line.setAttribute(name, value);
     rays.append(line);
   }
 }

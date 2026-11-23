@@ -9,8 +9,8 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#070f20",
-  "theme_color": "#070f20",
+  "background_color": "#fcf1e0",
+  "theme_color": "#fcf1e0",
   "categories": [
     "games",
     "puzzle"

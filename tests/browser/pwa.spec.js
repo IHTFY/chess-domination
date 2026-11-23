@@ -36,7 +36,7 @@ test('manifest parses and declares decodable icons with accurate sizes and safe 
           const offset = (y * canvas.width + x) * 4;
           if (data[offset + 3] !== 255) transparent = true;
           if (Math.hypot(x + 0.5 - canvas.width / 2, y + 0.5 - canvas.height / 2) > canvas.width * 0.4 &&
-            (data[offset] !== 11 || data[offset + 1] !== 23 || data[offset + 2] !== 48)) outsideSafeZone = true;
+            (data[offset] !== 252 || data[offset + 1] !== 241 || data[offset + 2] !== 224)) outsideSafeZone = true;
         }
       }
       return { width: image.naturalWidth, height: image.naturalHeight, transparent, outsideSafeZone };
@@ -86,4 +86,24 @@ test('a changed service worker waits, prompts, and reloads only when the user ac
   } finally {
     writeFileSync(workerPath, original);
   }
+});
+
+test('the Solved screen adds no element for the rosette, so a stale cached stylesheet lays it out as before', async ({ browser }) => {
+  // A returning player's old service worker can serve the previous stylesheet with this page once.
+  // That stylesheet lays the results out as a grid with a 12 px gap between children.
+  const context = await browser.newContext({ viewport: { width: 568, height: 365 }, serviceWorkers: 'block' });
+  const page = await context.newPage();
+  await context.route(/^https?:\/\/(?!127\.0\.0\.1:8765(?:\/|$))/, route => route.abort());
+  await page.route('**/style/global.css', route => route.fulfill({ contentType: 'text/css', body: '.results { display: grid; gap: 12px; }' }));
+  await page.goto('/');
+  // The page's results must be as tall as the result, the ad and the buttons alone.
+  const extra = await page.evaluate(() => {
+    const panel = document.querySelector('#solvedPanel');
+    panel.hidden = false;
+    const before = panel.scrollHeight;
+    for (const element of [...panel.children]) if (!element.matches('#solved-title, #solved-text, aside.ad, .results-actions')) element.remove();
+    return before - panel.scrollHeight;
+  });
+  expect(extra).toBe(0);
+  await context.close();
 });

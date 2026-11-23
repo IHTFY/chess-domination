@@ -153,7 +153,7 @@ test('offline reload serves the game and activation preserves unrelated caches',
   await page.click('#exampleBtn');
   await expect.poll(() => page.evaluate(() => Object.keys(document.querySelector('#board').position).length)).toBe(8);
   expect(await page.evaluate(async () => {
-    const urls = ['scripts/storage.js', 'style/global.css', 'svg/wQ.svg', 'sounds/beeps.mp3', 'manifest.json'];
+    const urls = ['scripts/storage.js', 'style/global.css', 'img/pieces/wQ.webp', 'sounds/beeps.mp3', 'manifest.json'];
     return Promise.all(urls.map(async url => (await fetch(url)).ok));
   })).toEqual([true, true, true, true, true]);
 });
@@ -267,7 +267,7 @@ test('a solved board opens the results screen once per solve; examples and first
 // Each box as the loader fills it: a fixed-size unit of the size asked for.
 const fillingLoader = 'window.ihtfyAds = { show(box) { const [w, h] = box.dataset.adSize.split("x"); const ad = document.createElement("ins"); ad.style.cssText = `display:inline-block;width:${w}px;height:${h}px`; box.append(ad); (window.__shown ??= []).push(box.dataset.adSize); } };';
 // A third entry is the size a window too short for the stylesheet's size steps down to.
-const resultsCases = [[360, 640], [390, 750], [412, 800], [1280, 800], [375, 560], [360, 400], [1440, 620, '320x100']];
+const resultsCases = [[360, 640], [390, 720], [390, 750], [412, 800], [1280, 800], [1440, 720], [375, 560], [360, 400], [1440, 620, '320x100']];
 for (const [width, height, smaller] of resultsCases) {
   test(`at ${width}x${height} the results ad is in view, clear of every control, and does not shift the screen`, async ({ page }) => {
     await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: fillingLoader }));
@@ -349,6 +349,19 @@ test('turning a phone with the results open keeps the ad and both buttons in the
   await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
   await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['300x250', '320x50', '300x250']);
   expect((await resultsLayout(page)).size).toBe('300x250');
+});
+
+test('a window that grows just enough for the rosette keeps the results ad it has', async ({ page }) => {
+  await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: fillingLoader }));
+  await page.setViewportSize({ width: 1440, height: 719 });
+  await ready(page);
+  await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
+  await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['300x250']);
+  // At 720 px the stylesheet allows the rosette, but the ad and the rosette don't both fit.
+  await page.setViewportSize({ width: 1440, height: 720 });
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => window.__shown)).toEqual(['300x250']);
+  expect(await resultsLayout(page)).toMatchObject({ size: '300x250', filled: 1, boxInView: true, textInView: true, panelScrolls: false });
 });
 
 test('a screen too short for any results ad leaves it out and keeps the result and buttons in view', async ({ page }) => {

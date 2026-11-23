@@ -25,13 +25,13 @@
     <link rel="icon" href="favicons/favicon.ico" sizes="16x16 32x32 48x48" />
     <link rel="icon" href="favicons/icon.svg" type="image/svg+xml" sizes="any" />
     <meta name="description" content="Chess puzzles about placing non-attacking pieces and controlling every square on the board." />
-    <meta name="theme-color" content="#070f20" />
+    <meta name="theme-color" content="#fcf1e0" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Domination" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="msapplication-config" content="favicons/browserconfig.xml" />
-    <meta name="msapplication-TileColor" content="#070f20" />
+    <meta name="msapplication-TileColor" content="#fcf1e0" />
 
 
     <meta
@@ -66,7 +66,7 @@
         z-index: 2147483647;
         display: grid;
         place-items: center;
-        background: #070f20;
+        background: #fcf1e0;
       }
       #launch-icon {
         position: relative;
@@ -233,15 +233,15 @@
     <script type="module">
       import './scripts/main.js';
       const board = document.getElementById('board');
-      // The icon's 5x5 board lands on c2-g6, which share its colors,
+      // The icon's 5x5 board lands on b2-f6, which share its colors,
       // the rest of the board builds out ring by ring, and the icon's queen drops into the tray.
       const $launch = name => document.getElementById(`launch-${name}`);
       const queen = board.shadowRoot.querySelector('#spare-wQ [part~="piece"]');
       let flights = [];
-      // Points the icon's board and queen at where e4 and the tray queen are now.
+      // Points the icon's board and queen at where d4 (its center square) and the tray queen are now.
       const aim = () => {
         const icon = $launch('icon').getBoundingClientRect();
-        const unit = icon.width / 512 * .94;
+        const unit = icon.width / 512 * .76;
         const center = rect => [rect.left + rect.width / 2, rect.top + rect.height / 2];
         const [x0, y0] = center(icon);
         const flyTo = (el, size) => {
@@ -250,8 +250,8 @@
           return `translate(${x - x0}px, ${y - y0}px) scale(${rect.width / (size * unit)})`;
         };
         const [grid, queenFlight] = flights;
-        grid.effect.setKeyframes({ transform: ['none', flyTo(board.shadowRoot.querySelector('[data-square="e4"]'), 58)] });
-        queenFlight.effect.setKeyframes({ transform: ['none', flyTo(queen, 132)] });
+        grid.effect.setKeyframes({ transform: ['none', flyTo(board.shadowRoot.querySelector('[data-square="d4"]'), 73.7)] });
+        queenFlight.effect.setKeyframes({ transform: ['none', flyTo(queen, 155.2)] });
       };
       globalThis.launchExit?.(overlay => {
         const colors = getComputedStyle(board);
@@ -266,19 +266,18 @@
         aim();
         return [
           ...flights,
-          overlay.animate({ backgroundColor: ['#070f20', 'rgb(7 15 32 / 0)'] }, { duration: 450, easing: 'ease-in', fill: 'forwards' }),
-          fadeOut($launch('tile'), 0, 250),
+          overlay.animate({ backgroundColor: ['#fcf1e0', 'rgb(252 241 224 / 0)'] }, { duration: 450, easing: 'ease-in', fill: 'forwards' }),
           // The queen's field flares across the board as it fades.
           $launch('field').animate({ opacity: [1, 0], transform: ['none', 'scale(2.2)'] }, { duration: 400, easing: 'ease-out', fill: 'forwards' }),
-          $launch('light').animate({ fill: ['#31577c', colors.getPropertyValue('--light-color').trim()] }, { duration: 600, fill: 'forwards' }),
-          $launch('dark').animate({ fill: ['#203c60', colors.getPropertyValue('--dark-color').trim()] }, { duration: 600, fill: 'forwards' }),
+          $launch('light').animate({ fill: ['#fcf1e0', colors.getPropertyValue('--light-color').trim()] }, { duration: 600, fill: 'forwards' }),
+          $launch('dark').animate({ fill: ['#255d4e', colors.getPropertyValue('--dark-color').trim()] }, { duration: 600, fill: 'forwards' }),
           fadeOut($launch('grid'), 600, 150),
           fadeOut($launch('queen'), 650, 150),
           fadeIn(queen, 600, 150),
           ...[...board.shadowRoot.querySelectorAll('[data-square]')].map(square => {
             const [file, rank] = square.dataset.square;
-            const ring = Math.max(Math.abs(file.charCodeAt(0) - 101), Math.abs(rank - 4));
-            // c2-g6 sit under the icon's squares and appear as those land.
+            const ring = Math.max(Math.abs(file.charCodeAt(0) - 100), Math.abs(rank - 4));
+            // b2-f6 sit under the icon's squares and appear as those land.
             return ring <= 2 ? fadeIn(square, 580, 150) : fadeIn(square, 520 + (ring - 2) * 110, 260, 'scale(.5)');
           }),
         ];
@@ -287,23 +286,24 @@
     <script defer type="module" src="scripts/pwa.js"></script>
   </head>
 <body>
-<!-- favicons/icon.svg in layers, inset like the maskable icon (tools/generate-icons.js). -->
+<!-- favicons/icon.svg in layers, laid out like the maskable icon (tools/generate-icons.js): no frame, art at 76%. -->
 <div id="launch" aria-hidden="true">
   <div id="launch-icon">
-    <svg id="launch-tile" viewBox="0 0 512 512"><rect width="512" height="512" fill="#0b1730"/></svg>
-    <svg id="launch-grid" viewBox="0 0 512 512"><g transform="translate(15.36 15.36) scale(.94)">
-      <g id="launch-light" fill="#31577c"><rect x="114" y="114" width="52" height="52" rx="4"/><rect x="230" y="114" width="52" height="52" rx="4"/><rect x="346" y="114" width="52" height="52" rx="4"/><rect x="172" y="172" width="52" height="52" rx="4"/><rect x="288" y="172" width="52" height="52" rx="4"/><rect x="114" y="230" width="52" height="52" rx="4"/><rect x="230" y="230" width="52" height="52" rx="4"/><rect x="346" y="230" width="52" height="52" rx="4"/><rect x="172" y="288" width="52" height="52" rx="4"/><rect x="288" y="288" width="52" height="52" rx="4"/><rect x="114" y="346" width="52" height="52" rx="4"/><rect x="230" y="346" width="52" height="52" rx="4"/><rect x="346" y="346" width="52" height="52" rx="4"/></g>
-      <g id="launch-dark" fill="#203c60"><rect x="172" y="114" width="52" height="52" rx="4"/><rect x="288" y="114" width="52" height="52" rx="4"/><rect x="114" y="172" width="52" height="52" rx="4"/><rect x="230" y="172" width="52" height="52" rx="4"/><rect x="346" y="172" width="52" height="52" rx="4"/><rect x="172" y="230" width="52" height="52" rx="4"/><rect x="288" y="230" width="52" height="52" rx="4"/><rect x="114" y="288" width="52" height="52" rx="4"/><rect x="230" y="288" width="52" height="52" rx="4"/><rect x="346" y="288" width="52" height="52" rx="4"/><rect x="172" y="346" width="52" height="52" rx="4"/><rect x="288" y="346" width="52" height="52" rx="4"/></g>
+    <svg id="launch-grid" viewBox="0 0 512 512"><g transform="translate(61.44 61.44) scale(.76)">
+      <g id="launch-light" fill="#fcf1e0"><rect x="145.7" y="72" width="73.7" height="73.7"/><rect x="293.1" y="72" width="73.7" height="73.7"/><rect x="72" y="145.7" width="73.7" height="73.7"/><rect x="219.4" y="145.7" width="73.7" height="73.7"/><rect x="366.8" y="145.7" width="73.7" height="73.7"/><rect x="145.7" y="219.4" width="73.7" height="73.7"/><rect x="293.1" y="219.4" width="73.7" height="73.7"/><rect x="72" y="293.1" width="73.7" height="73.7"/><rect x="219.4" y="293.1" width="73.7" height="73.7"/><rect x="366.8" y="293.1" width="73.7" height="73.7"/><rect x="145.7" y="366.8" width="73.7" height="73.7"/><rect x="293.1" y="366.8" width="73.7" height="73.7"/></g>
+      <g id="launch-dark" fill="#255d4e"><rect x="72" y="72" width="73.7" height="73.7"/><rect x="219.4" y="72" width="73.7" height="73.7"/><rect x="366.8" y="72" width="73.7" height="73.7"/><rect x="145.7" y="145.7" width="73.7" height="73.7"/><rect x="293.1" y="145.7" width="73.7" height="73.7"/><rect x="72" y="219.4" width="73.7" height="73.7"/><rect x="219.4" y="219.4" width="73.7" height="73.7"/><rect x="366.8" y="219.4" width="73.7" height="73.7"/><rect x="145.7" y="293.1" width="73.7" height="73.7"/><rect x="293.1" y="293.1" width="73.7" height="73.7"/><rect x="72" y="366.8" width="73.7" height="73.7"/><rect x="219.4" y="366.8" width="73.7" height="73.7"/><rect x="366.8" y="366.8" width="73.7" height="73.7"/></g>
     </g></svg>
-    <svg id="launch-field" viewBox="0 0 512 512"><g transform="translate(15.36 15.36) scale(.94)" fill="#8bd0ff">
-      <circle cx="256" cy="256" r="141" fill="none" stroke="#8bd0ff" stroke-width="9"/>
-      <path d="M140 140 372 372M140 372 372 140M140 256H372M256 140V372" stroke="#8bd0ff" stroke-width="7" stroke-linecap="round"/>
-      <circle cx="140" cy="140" r="11"/><circle cx="372" cy="140" r="11"/><circle cx="140" cy="372" r="11"/><circle cx="372" cy="372" r="11"/>
+    <svg id="launch-field" viewBox="0 0 512 512"><g transform="translate(61.44 61.44) scale(.76)" fill="#f15e6a">
+      <circle cx="256" cy="256" r="173.2" fill="none" stroke="#f15e6a" stroke-width="10.1"/>
+      <path d="M109.4 256H402.6M256 109.4V402.6" stroke="#f15e6a" stroke-width="9.8" stroke-linecap="round"/>
+      <path d="M110.4 110.4 401.6 401.6M110.4 401.6 401.6 110.4" stroke="#f15e6a" stroke-width="9.8"/>
+      <circle cx="110.4" cy="110.4" r="14.1"/><circle cx="401.6" cy="110.4" r="14.1"/><circle cx="110.4" cy="401.6" r="14.1"/><circle cx="401.6" cy="401.6" r="14.1"/>
     </g></svg>
-    <svg id="launch-queen" viewBox="0 0 512 512"><g transform="translate(15.36 15.36) scale(.94)">
-      <path d="M256 180 332 256 256 332 180 256Z" fill="#0b1730"/>
-      <path d="M256 190 322 256 256 322 190 256Z" fill="#8bd0ff"/>
-      <g transform="translate(256 254) scale(0.95)" fill="#0b1730"><path d="M-36-23-18-8 0-33 18-8 36-23 27 19H-27Z"/><rect x="-26" y="27" width="52" height="8" rx="4"/></g>
+    <svg id="launch-queen" viewBox="0 0 512 512"><g transform="translate(61.44 61.44) scale(.76)" fill="#321a23">
+      <path d="M256 166.9 345.1 256 256 345.1 166.9 256Z"/>
+      <path d="M256 178.4 333.6 256 256 333.6 178.4 256Z" fill="#fcf1e0"/>
+      <path d="M256 213.8 275 246.4 298.1 229.3 285.5 274.2 226.5 274.2 213.9 229.3 237 246.4Z"/>
+      <rect x="225.5" y="282.3" width="60.9" height="9.4" rx="4.7"/>
     </g></svg>
   </div>
 </div>
