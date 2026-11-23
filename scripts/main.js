@@ -205,8 +205,9 @@ function clearScreenAd(screen) {
   freshBox(screen.querySelector('.ad-box'));
 }
 
-// The player's first tap or key press.
+// The player's first tap or key press, including one that skipped the installed app's launch.
 const firstInput = new Promise(resolve => {
+  if (window.launchSkipped) resolve();
   for (const type of ['pointerdown', 'keydown']) addEventListener(type, resolve, { once: true, capture: true });
 });
 
