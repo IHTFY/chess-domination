@@ -162,6 +162,8 @@ for (const phase of ['holds', 'plays']) {
     const page = await context.newPage();
     await page.addInitScript(installed);
     await page.addInitScript(slow);
+    // Registered before the page's own listeners, so it sees a click even if the guard eats it.
+    await page.addInitScript(() => addEventListener('click', () => { window.clicks = (window.clicks ?? 0) + 1; }, true));
     if (phase === 'holds') await page.addInitScript(() => {
       Object.defineProperty(PerformanceObserver, 'supportedEntryTypes', { value: [] });
       let exit;
@@ -180,9 +182,71 @@ for (const phase of ['holds', 'plays']) {
     // A click that would reach the switch comes right after the tap.
     await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 100)));
     await expect(page.locator('#soundSwitch')).toHaveAttribute('aria-pressed', sound);
+    // The canceled touch made no click at all.
+    expect(await page.evaluate(() => window.clicks)).toBeUndefined();
+    await page.touchscreen.tap(x + width / 2, y + height / 2);
+    await expect(page.locator('#soundSwitch')).not.toHaveAttribute('aria-pressed', sound);
     await context.close();
   });
 }
+
+// Slows only the animations, so the guard's one second after a release runs at its real length.
+const slowAnimations = () => {
+  const animate = Element.prototype.animate;
+  Element.prototype.animate = function (keyframes, options) {
+    const animation = animate.call(this, keyframes, options);
+    animation.playbackRate = 0.1;
+    return animation;
+  };
+};
+
+test('a mouse press held past the launch loses its click, and the next click works', async ({ page }) => {
+  await page.addInitScript(installed);
+  await page.addInitScript(slowAnimations);
+  await page.goto('/');
+  await page.waitForFunction(() => document.getElementById('launch-grid')?.getAnimations().length > 0);
+  const sound = await page.locator('#soundSwitch').getAttribute('aria-pressed');
+  const { x, y, width, height } = await page.locator('#soundSwitch').boundingBox();
+  await page.mouse.move(x + width / 2, y + height / 2);
+  await page.mouse.down();
+  await expect(page.locator('#launch')).toHaveCount(0, { timeout: 5000 });
+  await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 1200)));
+  await page.mouse.up();
+  await expect(page.locator('#soundSwitch')).toHaveAttribute('aria-pressed', sound);
+  await page.mouse.click(x + width / 2, y + height / 2);
+  await expect(page.locator('#soundSwitch')).not.toHaveAttribute('aria-pressed', sound);
+});
+
+test('a keyboard click right after a skipping press goes through', async ({ page }) => {
+  await page.addInitScript(installed);
+  await page.addInitScript(slow);
+  await page.goto('/');
+  await page.waitForFunction(() => document.getElementById('launch-grid')?.getAnimations().length > 0);
+  const sound = await page.locator('#soundSwitch').getAttribute('aria-pressed');
+  // A press whose click never comes, so the guard is still waiting when the key arrives.
+  await page.mouse.move(5, 5);
+  await page.mouse.down();
+  await expect(page.locator('#launch')).toHaveCount(0, { timeout: 5000 });
+  await page.locator('#soundSwitch').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#soundSwitch')).not.toHaveAttribute('aria-pressed', sound);
+  await page.mouse.up();
+});
+
+test('a key that skips the launch still counts as the first input, which starts the ad beside the board', async ({ page }) => {
+  await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({
+    contentType: 'text/javascript',
+    body: 'window.ihtfyAds = { show(box) { (window.__shown ??= []).push(box.dataset.adSize); } };',
+  }));
+  await page.setViewportSize({ width: 1920, height: 850 });
+  await page.addInitScript(installed);
+  await page.addInitScript(slow);
+  await page.goto('/');
+  await page.waitForFunction(() => document.getElementById('launch-grid')?.getAnimations().length > 0);
+  await page.keyboard.press('Shift');
+  await expect(page.locator('#launch')).toHaveCount(0, { timeout: 5000 });
+  await expect.poll(() => page.evaluate(() => window.__shown), { timeout: 10000 }).toEqual(['300x600']);
+});
 
 test('a layout change during the launch aims the icon at the moved board', async ({ page }) => {
   await page.addInitScript(installed);

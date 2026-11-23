@@ -105,28 +105,50 @@
           if (holding) return end();
           animations.forEach((a) => a.finish());
         };
-        // While the copy shows, a tap or key only skips it: nothing behind it reacts.
+        // A press's click comes after the game takes input again, aimed at whatever is under the pointer, so
+        // this guard outlives the launch. It eats only that press's click: a keyboard or screen-reader click
+        // (detail 0) and other pointers go through. A press that ends without a click (a held mouse button)
+        // leaves none to eat, so the pointer's next press, a cancel, or a second after it lifts drops the guard.
+        const guard = (press) => {
+          const armed = new AbortController();
+          const options = { capture: true, signal: armed.signal };
+          const drop = () => armed.abort();
+          const mine = (event) => event.pointerId === press.pointerId;
+          let released = false;
+          // A touch's touchstart comes after its pointerdown, so after a skip that already ended the launch.
+          // Canceling it stops the click in every browser.
+          if (press.pointerType === 'touch') {
+            addEventListener('touchstart', (touch) => touch.preventDefault(), { ...options, passive: false, once: true });
+          }
+          addEventListener('click', (click) => {
+            // Where clicks carry no pointer id (older Safari), the click after this pointer lifts is its click.
+            if (!click.detail || (click.pointerId === undefined ? !released : !mine(click))) return;
+            click.preventDefault();
+            click.stopImmediatePropagation();
+            drop();
+          }, options);
+          addEventListener('pointerdown', (next) => next.isPrimary && next.pointerType === press.pointerType && drop(), options);
+          addEventListener('pointercancel', (other) => mine(other) && drop(), options);
+          addEventListener('pointerup', (up) => {
+            if (!mine(up)) return;
+            released = true;
+            setTimeout(drop, 1000);
+          }, options);
+        };
+        // While the copy shows, a tap or key only skips it: nothing behind it reacts. Other listeners on window
+        // itself still run, such as the game's wait for a first input, which starts the ad beside the board.
         const swallow = (event) => {
           event.preventDefault();
-          event.stopImmediatePropagation();
-          // A touch's click comes after the game takes input again, aimed at whatever is under the finger.
-          if (event.type === 'pointerdown' && event.isPrimary && event.button === 0) {
-            const spare = () => removeEventListener('click', eat, true);
-            addEventListener('click', eat, { capture: true, once: true });
-            addEventListener('pointercancel', spare, { once: true });
-            setTimeout(spare, 1000);
-          }
+          event.stopPropagation();
+          if (event.type === 'pointerdown' && event.isPrimary && event.button === 0) guard(event);
           skip();
         };
-        const eat = (event) => {
-          event.preventDefault();
-          event.stopImmediatePropagation();
-        };
+        // Drops the listeners the launch adds.
+        const exit = new AbortController();
         const end = () => {
           clearTimeout(fallback);
           holding = false;
-          removeEventListener('pointerdown', swallow, true);
-          removeEventListener('keydown', swallow, true);
+          exit.abort();
           layout?.disconnect();
           removeEventListener('resize', resized);
           // A stalled exit must not leave squares or pieces hidden once the game takes input.
@@ -135,8 +157,8 @@
           root.classList.remove('launching');
           document.getElementById('launch')?.remove();
         };
-        addEventListener('pointerdown', swallow, true);
-        addEventListener('keydown', swallow, true);
+        addEventListener('pointerdown', swallow, { capture: true, signal: exit.signal });
+        addEventListener('keydown', swallow, { capture: true, signal: exit.signal });
         // The game never stays hidden behind the copy if launchExit isn't called or its exit fails.
         let fallback = setTimeout(end, 4000);
         // play(overlay) starts the game's exit and returns its Web Animations.
