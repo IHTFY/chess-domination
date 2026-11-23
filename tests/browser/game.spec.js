@@ -351,6 +351,19 @@ test('turning a phone with the results open keeps the ad and both buttons in the
   expect((await resultsLayout(page)).size).toBe('300x250');
 });
 
+test('a window that grows just enough for the rosette keeps the results ad it has', async ({ page }) => {
+  await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: fillingLoader }));
+  await page.setViewportSize({ width: 1440, height: 719 });
+  await ready(page);
+  await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
+  await expect.poll(() => page.evaluate(() => window.__shown)).toEqual(['300x250']);
+  // At 720 px the stylesheet allows the rosette, but the ad and the rosette don't both fit.
+  await page.setViewportSize({ width: 1440, height: 720 });
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => window.__shown)).toEqual(['300x250']);
+  expect(await resultsLayout(page)).toMatchObject({ size: '300x250', filled: 1, boxInView: true, textInView: true, panelScrolls: false });
+});
+
 test('a screen too short for any results ad leaves it out and keeps the result and buttons in view', async ({ page }) => {
   await page.route('https://ihtfy.com/ads/v1.js', route => route.fulfill({ contentType: 'text/javascript', body: fillingLoader }));
   await page.setViewportSize({ width: 568, height: 320 });

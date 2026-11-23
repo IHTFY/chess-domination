@@ -188,13 +188,13 @@ function showScreenAd(name, screen, key) {
 }
 
 /**
- * After the window changes size: an ad that no longer fits `screen` (a phone turned on its side)
+ * After the window changes size: an ad that no longer fits `screen`, even without the rosette (a phone turned on its side),
  * gives way at once to a box the screen can hold, or to none. One that still fits stays, and if
  * its request is still waiting, the wait starts again.
  */
 function refitScreenAd(screen) {
   if (screenKey === null) return;
-  if (screen.classList.contains('ad-left-out') || !fits(screen)) placeScreenAd(screen, true);
+  if (screen.classList.contains('ad-left-out') || !fitsWithRosette(screen)) placeScreenAd(screen, true);
   else if (screenAsk) askOnceSettled(screenAsk);
 }
 
