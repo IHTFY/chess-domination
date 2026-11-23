@@ -1274,11 +1274,13 @@ header,.brand,.header-actions {
   font-weight:800;
 }
 
-/* The score rosette shows only where it fits above the result without pushing the ad down. */
+/* The score rosette shows only where it fits above the result without pushing the ad down.
+   It's a background, so a stale cached stylesheet with this page shows nothing. */
 .rosette {
   display:none;
-  width:auto;
+  width:75px;
   height:88px;
+  background:url(../img/rosette.webp) center/contain no-repeat;
 }
 
 @media(min-height:720px) {

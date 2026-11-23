@@ -87,3 +87,18 @@ test('a changed service worker waits, prompts, and reloads only when the user ac
     writeFileSync(workerPath, original);
   }
 });
+
+test('the score rosette takes no space when a stale cached stylesheet comes with the new page', async ({ browser }) => {
+  // A returning player's old service worker can serve the previous stylesheet with this page once.
+  const context = await browser.newContext({ viewport: { width: 568, height: 320 }, serviceWorkers: 'block' });
+  const page = await context.newPage();
+  await context.route(/^https?:\/\/(?!127\.0\.0\.1:8765(?:\/|$))/, route => route.abort());
+  await page.route('**/style/global.css', route => route.fulfill({ contentType: 'text/css', body: '' }));
+  await page.goto('/');
+  const height = await page.evaluate(() => {
+    document.querySelector('#solvedPanel').hidden = false;
+    return document.querySelector('#solvedPanel .rosette').getBoundingClientRect().height;
+  });
+  expect(height).toBe(0);
+  await context.close();
+});
