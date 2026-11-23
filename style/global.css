@@ -1275,17 +1275,15 @@ header,.brand,.header-actions {
 }
 
 /* The score rosette shows only where it fits above the result without pushing the ad down.
-   It's a background, so a stale cached stylesheet with this page shows nothing. */
-.rosette {
-  display:none;
-  width:75px;
-  height:88px;
-  background:url(../img/rosette.webp) center/contain no-repeat;
-}
-
+   The stylesheet draws it, so a stale cached stylesheet with this page lays the results out as before. */
 @media(min-height:720px) {
-  .rosette {
+  #solved-title::before {
+    content:"";
     display:block;
+    width:75px;
+    height:88px;
+    margin:0 auto 12px;
+    background:url(../img/rosette.webp) center/contain no-repeat;
   }
 }
 

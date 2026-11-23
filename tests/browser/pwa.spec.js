@@ -88,17 +88,22 @@ test('a changed service worker waits, prompts, and reloads only when the user ac
   }
 });
 
-test('the score rosette takes no space when a stale cached stylesheet comes with the new page', async ({ browser }) => {
+test('the Solved screen adds no element for the rosette, so a stale cached stylesheet lays it out as before', async ({ browser }) => {
   // A returning player's old service worker can serve the previous stylesheet with this page once.
-  const context = await browser.newContext({ viewport: { width: 568, height: 320 }, serviceWorkers: 'block' });
+  // That stylesheet lays the results out as a grid with a 12 px gap between children.
+  const context = await browser.newContext({ viewport: { width: 568, height: 365 }, serviceWorkers: 'block' });
   const page = await context.newPage();
   await context.route(/^https?:\/\/(?!127\.0\.0\.1:8765(?:\/|$))/, route => route.abort());
-  await page.route('**/style/global.css', route => route.fulfill({ contentType: 'text/css', body: '' }));
+  await page.route('**/style/global.css', route => route.fulfill({ contentType: 'text/css', body: '.results { display: grid; gap: 12px; }' }));
   await page.goto('/');
-  const height = await page.evaluate(() => {
-    document.querySelector('#solvedPanel').hidden = false;
-    return document.querySelector('#solvedPanel .rosette').getBoundingClientRect().height;
+  const shift = await page.evaluate(() => {
+    const panel = document.querySelector('#solvedPanel');
+    panel.hidden = false;
+    const top = () => document.querySelector('#solved-title').getBoundingClientRect().top;
+    const before = top();
+    for (const element of [...panel.children]) if (!element.matches('h2, p, aside, .results-actions')) element.remove();
+    return before - top();
   });
-  expect(height).toBe(0);
+  expect(shift).toBe(0);
   await context.close();
 });

@@ -377,7 +377,7 @@ boardStyle.textContent = `
   [part~='piece'] img { -webkit-user-drag: none; }
   [data-square] { cursor: pointer; }
   [data-square]:has([piece]) { cursor: grab; }
-  [data-square]:focus-visible, [id^='spare-w']:focus-visible { outline: 3px solid #8c2d40; outline-offset: -3px; }
+  [data-square]:focus-visible, [id^='spare-w']:focus-visible { outline: 3px solid #1a0a12; outline-offset: -3px; }
 `;
 board.shadowRoot.append(boardStyle);
 
