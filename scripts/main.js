@@ -108,6 +108,10 @@ let screenAsked = new Set();
 let screenTimer;
 let screenAsk = null;
 
+// The results screen that opened while the visitor may have bought ad-free, still waiting for
+// the loader to check the token; it gets its ad if the loader finds the token isn't valid.
+let waitingScreen = null;
+
 // Whether the result, the box and the buttons all show without scrolling the screen.
 const fits = screen => screen.scrollHeight <= screen.clientHeight && screen.scrollWidth <= screen.clientWidth;
 
@@ -177,10 +181,15 @@ function placeScreenAd(screen, later) {
  * Puts a new box on the screen named `name` (whose element is `screen`, already
  * showing, so the stylesheet has sized the box) and fills it for the game over
  * named `key`. Any other screen gets nothing, and so does a visitor who may have
- * bought ad-free.
+ * bought ad-free, unless the loader finds the token isn't valid (setUpPlayAd).
  */
 function showScreenAd(name, screen, key) {
-  if (name !== AD_SCREEN || document.documentElement.classList.contains('ad-free')) return;
+  if (name !== AD_SCREEN) return;
+  if (document.documentElement.classList.contains('ad-free')) {
+    waitingScreen = { screen, key };
+    return;
+  }
+  waitingScreen = null;
   screenKey = key;
   screenBoxes = 0;
   screenAsked = new Set();
@@ -201,6 +210,7 @@ function refitScreenAd(screen) {
 /** Swaps the box on a screen that is going away for an empty one, so no ad stays on the page out of view. */
 function clearScreenAd(screen) {
   screenKey = null;
+  waitingScreen = null;
   cancelScreenAsk();
   freshBox(screen.querySelector('.ad-box'));
 }
@@ -285,6 +295,7 @@ function setUpPlayAd(rail) {
         if (free) return;
         document.documentElement.classList.remove('ad-free');
         startPlayAd(box);
+        if (waitingScreen) showScreenAd(AD_SCREEN, waitingScreen.screen, waitingScreen.key);
       },
       () => {}, // The loader didn't arrive, so no ad could show either.
     );

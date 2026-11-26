@@ -689,3 +689,45 @@ test('the head script\'s class follows the token as main.js finds it', async () 
   setUpPlayAd(rail());
   assert.equal(document.documentElement.classList.has('ad-free'), true);
 });
+
+// The results screen opens while the loader is still checking a stored token.
+async function resultsBeforeTheLoaderAnswers(valid) {
+  railSize = [300, 250];
+  stored.set('ihtfy-ad-free', 'token');
+  window.ihtfyAds.adFree = async () => valid;
+  const ads = await loadAds();
+  ads.setUpPlayAd(rail());
+  const results = screen();
+  ads.showScreenAd('results', results, 'a');
+  assert.equal(added.length, 1);
+  return { ...ads, results };
+}
+
+test('a rejected token gives a results screen opened meanwhile its ad', async () => {
+  const { results } = await resultsBeforeTheLoaderAnswers(false);
+  const waiting = results.box;
+  added[0].fire('load');
+  await tick();
+  assert.equal(document.documentElement.classList.has('ad-free'), false);
+  assert.notEqual(results.box, waiting);
+  assert.equal(results.box.dataset.adSize, '300x250');
+  assert.deepEqual(shown.map(([shownBox, key]) => [shownBox, key]), [[results.box, 'a']]);
+});
+
+test('a valid token leaves a results screen opened meanwhile without a box or an ad', async () => {
+  const { results } = await resultsBeforeTheLoaderAnswers(true);
+  const waiting = results.box;
+  added[0].fire('load');
+  await tick();
+  assert.equal(document.documentElement.classList.has('ad-free'), true);
+  assert.equal(results.box, waiting);
+  assert.deepEqual(shown, []);
+});
+
+test('a rejected token asks no ad for a results screen that closed meanwhile', async () => {
+  const { results, clearScreenAd } = await resultsBeforeTheLoaderAnswers(false);
+  clearScreenAd(results);
+  added[0].fire('load');
+  await tick();
+  assert.deepEqual(shown, []);
+});
