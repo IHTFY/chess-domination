@@ -308,6 +308,7 @@ let dragging = false;
 let cancelDrop = false;
 let solvedBoard = null;
 let completionTimer;
+let stopWaitingForDialog = null;
 let exampleFen = null;
 let solves = 0;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -507,7 +508,7 @@ function updateStats(pos) {
   const solved = valid && count === target && fen !== exampleFen;
   const nextSolvedBoard = solved ? `${gameMode}-${selected}-${fen}` : null;
   if (nextSolvedBoard !== solvedBoard) {
-    clearTimeout(completionTimer);
+    cancelCompletion();
     solvedBoard = nextSolvedBoard;
     if (solved) celebrate({ count, piece: selected, mode: gameMode, fen });
   }
@@ -515,19 +516,34 @@ function updateStats(pos) {
   queueMicrotask(() => board.updateComplete.then(decorateBoard));
 }
 
+function cancelCompletion() {
+  clearTimeout(completionTimer);
+  stopWaitingForDialog?.();
+  stopWaitingForDialog = null;
+}
+
 // A board the player solved opens the results screen that carries the ad. Examples don't.
+// While a dialog is open the results wait for it to close, if the board is still the solved one.
 function celebrate({ count, piece, mode, fen }) {
   const key = `${mode}-${piece}-${count}-${++solves}`;
-  completionTimer = setTimeout(() => {
+  const open = () => {
+    stopWaitingForDialog = null;
     if (gameMode !== mode || selected !== piece || board.fen() !== fen || fen === exampleFen) return;
-    if (!results.hidden || document.querySelector('dialog[open]')) return;
+    if (!results.hidden) return;
+    const dialog = document.querySelector('dialog[open]');
+    if (dialog) {
+      dialog.addEventListener('close', open, { once: true });
+      stopWaitingForDialog = () => dialog.removeEventListener('close', open);
+      return;
+    }
     const name = names[piece].toLowerCase();
     $('solved-text').textContent = mode === 'MIN'
       ? `${count} ${name}s cover every square. That is the minimum.`
       : `${count} ${name}s and none attack another. That is the maximum.`;
     cancelDrag();
     openResults(key);
-  }, 500);
+  };
+  completionTimer = setTimeout(open, 500);
 }
 
 const results = $('solvedPanel');

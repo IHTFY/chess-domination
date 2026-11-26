@@ -103,3 +103,28 @@ test('toggling highlights preserves the pending completion without another ad', 
   await page.clock.runFor(601);
   expect(await page.evaluate(() => window.resultRequests)).toHaveLength(1);
 });
+
+test('a solve with Scores open shows its results once the dialog closes', async ({ page }) => {
+  await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
+  await page.clock.runFor(100);
+  await page.locator('#statsBtn').evaluate(button => button.click());
+  await page.clock.runFor(601);
+  await expect(page.locator('#statsPanel')).toBeVisible();
+  await expect(page.locator('#solvedPanel')).toBeHidden();
+  await page.locator('#statsPanel [data-close]').first().evaluate(button => button.click());
+  await expect(page.locator('#solvedPanel')).toBeVisible();
+  await expect(page.locator('#solved-text')).toHaveText('8 queens and none attack another. That is the maximum.');
+  await expect.poll(() => page.evaluate(() => window.resultRequests?.length ?? 0)).toBe(1);
+});
+
+test('a board changed while Scores is open gets no results when the dialog closes', async ({ page }) => {
+  await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), eightQueens);
+  await page.clock.runFor(100);
+  await page.locator('#statsBtn').evaluate(button => button.click());
+  await page.clock.runFor(601);
+  await page.locator('#board').evaluate((board, position) => board.setPosition(position, false), { a1: 'wQ', b5: 'wQ', c8: 'wQ', d6: 'wQ', e3: 'wQ', f7: 'wQ', g2: 'wQ' });
+  await page.locator('#statsPanel [data-close]').first().evaluate(button => button.click());
+  await page.clock.runFor(601);
+  await expect(page.locator('#solvedPanel')).toBeHidden();
+  expect(await page.evaluate(() => window.resultRequests ?? [])).toEqual([]);
+});
